@@ -1,0 +1,5 @@
+{
+	"System.NULL": "", 
+	"3": "def init(): print('this is in the virtual module init func')\ndef otherfunc(): print('this is in the virtual_module.otherfunc()')",
+	"4" : "import System;System.Exit(0)"
+}
