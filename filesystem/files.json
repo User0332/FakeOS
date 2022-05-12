@@ -1,4 +1,42 @@
 {
-	"virtual_module.py": 3,
-	"myproc" : 4
+	"/" : {
+		"dirs" : {
+			"bin" : {
+				"dirs" : {},
+				"files" : {
+					"myproc" : 8
+				}
+			},
+			"cfg" : {
+				"dirs" : {
+					"users" : {
+						"dirs" : {},
+						"files" : {
+							"list.cfg" : 5,
+							"permissions.cfg" : 6,
+							"groups.cfg" : 7
+						}
+					}
+				},
+				"files" : {
+					"passwdstore.cfg" : 3,
+					"syspath.cfg" : 4
+				}
+			},
+			"users" : {
+				"dirs" : {
+					"root" : {
+						"dirs" : {
+							
+						},
+						"files" : {
+							"virtual_module.py": 9
+						}
+					}
+				},
+				"files" : {}
+			}
+		},
+		"files" : {}
+	}
 }
