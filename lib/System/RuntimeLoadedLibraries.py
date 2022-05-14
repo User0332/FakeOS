@@ -1,8 +1,8 @@
-def ImportAttribute(filename, attr):
-	from System.IO import File, Console
-	from System.Locals import NULL
-	from importlib import import_module
+from System.IO import File, Console
+from System.Locals import *
+from importlib import import_module
 
+def ImportAttribute(filename, attr):
 	mod = File(filename)
 	code = mod.ReadAll()
 	
@@ -22,9 +22,6 @@ def ImportAttribute(filename, attr):
 		return NULL
 
 def ImportLibrary(filename):
-	from System.IO import File
-	from importlib import import_module
-
 	mod = File(filename)
 	code = mod.ReadAll()
 
@@ -40,7 +37,6 @@ def ImportLibrary(filename):
 	return module
 
 def LoadToFile(libname, filename):
-	from System.IO import File
 	mod = File(libname)
 	code = mod.ReadAll()
 	

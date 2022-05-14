@@ -1,8 +1,8 @@
 from System.Locals import *
+import json
 
 class File:
 	def __init__(self, name):
-		import json
 		self.name = name
 		if name in (0, 1, 2):
 			self._file = name
@@ -31,8 +31,6 @@ class File:
 				self.idx = str(files[name])
 
 	def ReadAll(self):
-		import json
-
 		if self._file == 0:
 			with open("filesystem/stdin.fakeos", "r") as f:
 				return f.read()
@@ -43,8 +41,6 @@ class File:
 			return json.load(f)[self.idx]
 
 	def Read(self):
-		import json
-
 		if self._file == 0:
 			with open("filesystem/stdin.fakeos", "r") as f:
 				contents = list(f.read())
@@ -58,8 +54,6 @@ class File:
 			yield content
 
 	def Write(self, string):
-		import json
-
 		if self._file == 0:
 			Console.ErrWriteLine("Cannot write to stdin!")
 		elif self._file == 1:
@@ -131,28 +125,3 @@ class Console:
 
 	def Getch():
 		return STDIN.Read()[0]
-
-	def ShowOutputFrom(*streams):
-		for stream in streams:
-			if not isinstance(stream, File):
-				Console.ErrWriteLine("Streams passed to ShowOutputFrom() must be an object of System.File")
-				return
-
-			with open("other/output_streams.fakeos", "a") as f:
-				f.write(stream.name+"\n")
-
-	def HideOutputFrom(*streams):
-		with open("other/output_streams.fakeos", "r") as f:
-				out_streams = f.read().splitlines()
-		for stream in streams:
-			if not isinstance(stream, File):
-				Console.ErrWriteLine("Streams passed to HideOutputFrom() must be an object of System.File")
-				return
-
-			try:
-				out_streams.remove(stream)
-			except ValueError:
-				pass
-
-		with open("other/output_streams.fakeos", "w") as f:
-				f.write("\n".join(out_streams))

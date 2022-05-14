@@ -2,13 +2,13 @@ from System.Locals import *
 from json import load
 from os.path import getsize
 
-def SysCommand(command):
+def SysCommand(command) -> SYS_RESP:
 	with open(REQUEST_FILE, "w") as f:
 		f.write(f'{{"type" : "SystemCommand", "data" : "{command}"}}')
 
 	return AwaitSystemResponse()
 
-def AwaitSystemResponse():
+def AwaitSystemResponse() -> SYS_RESP:
 
 	data = ""
 

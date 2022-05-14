@@ -21,3 +21,5 @@ SYSTEM_RESPONSE_CODES = {
 	5 : "Resource not found",
 	6 : "Exceptional Error"
 }
+
+SYS_RESP = tuple[int, str]
