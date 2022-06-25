@@ -1,127 +1,112 @@
-from System.Locals import *
-import json
+from .Locals import *
+from json import load, loads, dumps
+from .Machine.FakeOS import AwaitSystemResponse, SystemError
+
+M_RDONLY = 0
+M_WRONLY = 1
+
+SEEK_SET = 0
+SEEK_CUR = 1
+SEEK_END = 2
 
 class File:
-	def __init__(self, name):
-		self.name = name
-		if name in (0, 1, 2):
-			self._file = name
-		else:
-			self._file = NULL
-			with open("filesystem/files.json", "r") as f:
-				files = json.load(f)
+	def __init__(self, filename: str, mode: int) -> None:
+		res = OpenFile(filename, mode)
+		if res[0]["code"] not in (1, 2):
+			raise SystemError(res[0]["value"])
+
+		self._fd = res["data"]
+
+	def __enter__(self):
+		return self
+
+	def __exit__(self, exc_type, exc_value, exc_traceback):
+		self.Close()
+
+	def Write(self, buff) -> int:
+		res = WriteFile(self._fd, buff)
+
+		if res[0]["code"] not in (1, 2):
+			raise SystemError(res[0]["value"])
 		
-			if name not in files.keys():
-				new = list(files.values())[-1]+1
-				files[name] = new
+		return res["data"]
+
+	def Read(self, numb: int=None) -> str:
+		if numb == None:
+			with open(f"proc/{PROC_ID}/fd/table.json", 'r') as f:
+				numb = len(load(f)[self._fd]["contents"])
+
+		res = ReadFile(self._fd, numb)
+
+		if res[0]["code"] not in (1, 2):
+			raise SystemError(res[0]["value"])
+		
+		return res["data"]
+
+	def Seek(self, offset: int, whence: int) -> int:
+		res = SeekFile(self._fd, offset, whence)
+		if res[0]["code"] not in (1, 2):
+			raise SystemError(res[0]["value"])
+		return res["data"]
+
+	def Tell(self) -> int:
+		res = Tell(self._fd)
+		if res[0]["code"] not in (1, 2):
+			raise SystemError(res[0]["value"])
+
+		return res["data"]
+
+	def Close(self) -> None:
+		res = Close(self._fd)
+		
+		if res[0]["code"] not in (1, 2):
+			raise SystemError(res[0]["value"])
+
+	def LoadJSON(self) -> dict:
+		return loads(self.Read())
+
+	def DumpJSON(self, json: dict) -> None:
+		return self.Write(dumps(dict))
+
+	def __del__(self) -> None:
+		if hasattr(self, '_fd'):
+			self.Close()
+		
 				
-				with open("filesystem/files.json", "w") as f:
-					json.dump(files, f, indent=4)
-
-				with open("filesystem/contents.json", "r") as f:
-					contents = json.load(f)
-
-				contents[str(new)] = ""
-
-				with open("filesystem/contents.json", "w") as f:
-					json.dump(contents, f, indent=4)
 	
-				self.idx = str(new)
-			else:
-				self.idx = str(files[name])
 
-	def ReadAll(self):
-		if self._file == 0:
-			with open("filesystem/stdin.fakeos", "r") as f:
-				return f.read()
-		elif self._file in (1, 2):
-			Console.ErrWriteLine("Cannot read from stdout or stderr!")
-			return NULL
-		with open("filesystem/contents.json", "r") as f:
-			return json.load(f)[self.idx]
+def OpenFile(filename: str, mode: int) -> SYS_RESP:
+	with open(REQUEST_FILE, 'w') as f:
+		f.write(f'{{ "type" : "Sys.OpenFile", "data" : {{ "filename" : {filename}, "mode" : {mode} }} }}')
 
-	def Read(self):
-		if self._file == 0:
-			with open("filesystem/stdin.fakeos", "r") as f:
-				contents = list(f.read())
-		elif self._file in (1, 2):
-			Console.ErrWriteLine("Cannot read from stdout or stderr!")
-			return NULL
-		with open("filesystem/contents.json", "r") as f:
-			contents = list(json.load(f)[self.idx])
+	return AwaitSystemResponse()
 
-		for content in contents:
-			yield content
+def SeekFile(fd: int, offset: int, whence: int) -> SYS_RESP:
+	with open(REQUEST_FILE, 'w') as f:
+		f.write(f'{{ "type" : "Sys.SeekFile", "data" : {{ "fd" : {fd}, "offset" : {offset}, "whence" : {whence} }} }}')
 
-	def Write(self, string):
-		if self._file == 0:
-			Console.ErrWriteLine("Cannot write to stdin!")
-		elif self._file == 1:
-			with open("filesystem/stdout.fakeos", "a") as f:
-				f.write(string)
-		elif self._file == 2:
-			with open("filesystem/stderr.fakeos", "a") as f:
-				f.write(string)
-		else:
-			with open("filesystem/contents.json", "r") as f:
-				contents = json.load(f)
-				contents[self.idx]+=string
+	return AwaitSystemResponse()
 
-			
-			with open("filesystem/contents.json", "w") as f:
-				json.dump(contents, f, indent=4)
+def Tell(fd: int) -> SYS_RESP:
+	with open(REQUEST_FILE, 'w') as f:
+		f.write(f'{{ "type" : "Sys.Tell", "data" : {{ "fd" : {fd} }} }}')
 
-	def Clear(self):
-		import json
+	return AwaitSystemResponse()
 
-		if self._file in (0, 1, 2):
-			Console.ErrWriteLine("Cannot use clear on stdout, stderr, or stdin!")
-			return NULL
+def WriteFile(fd: int, buff: str) -> SYS_RESP:
+	with open(REQUEST_FILE, 'w') as f:
+		f.write(f'{{ "type" : "Sys.WriteFile", "data" : {{ "fd" : {fd}, "buff" : buff }} }}')
 
-		with open("filesystem/contents.json", "r") as f:
-			contents = json.load(f)
+	return AwaitSystemResponse()
 
-		contents[self.idx] = ""
+def ReadFile(fd: int, numb: int) -> SYS_RESP:
+	with open(REQUEST_FILE, 'w') as f:
+		f.write(f'{{ "type" : "Sys.ReadFile", "data" : {{ "fd" : {fd}, "numb" : numb }} }}')
 
-		with open("filesystem/contents.json", "w") as f:
-			json.dump(contents, f)
-
-
-STDIN = File(0)
-STDOUT = File(1)
-STDERR = File(2)
-
-class Console:
-	def Write(*strings):
-		for string in strings:
-			STDOUT.Write(string)
+	return AwaitSystemResponse()
 	
-	def WriteLine(*strings):
-		for string in strings:
-			STDOUT.Write(string)
+def Close(fd: int) -> SYS_RESP:
+	with open(REQUEST_FILE, 'w') as f:
+		f.write(f'{{ "type" : "Sys.Close", "data" : {{ "fd" : {fd} }}')
 
-		STDOUT.Write("\n")
-
-	def ErrWrite(*strings):
-		for string in strings:
-			STDERR.Write(string)
-
-	def ErrWriteLine(*strings):
-		for string in strings:
-			STDERR.Write(string)
-
-		STDERR.Write("\n")
-
-	def ReadLine(prompt):
-		Console.Write(prompt)
-		inp = ""
-		for char in STDIN.Read():
-			if char == "\n":
-				break
-			else:
-				inp+=char
-
-		return inp
-
-	def Getch():
-		return STDIN.Read()[0]
+	return AwaitSystemResponse()

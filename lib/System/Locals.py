@@ -1,16 +1,22 @@
-from sys import argv as ARGV
-from os import stat
+from sys import modules, argv
+from os import getcwd
+from os.path import join
 
-ARGV = ARGV #for constant recognition
+ARGV = argv #for constant recognition
 
 NULL = "System.NULL"
 
-try: PROC_ID = ARGV[0].split('/')[-2]
+try: PROC_ID = join(getcwd(), ARGV[0]).replace('\\', '/').split('/')[-2]
 except IndexError: PROC_ID = 0 #if this fails, then the process is sys
 
-REQUEST_FILE = f"proc/{PROC_ID}/request.fakeos"
+if hasattr(modules["__main__"], "_SYSTEM_INIT_OVERRIDE_PROC_ID"):
+	PROC_ID = modules["__main__"]._SYSTEM_INIT_OVERRIDE_PROC_ID #just to be safe in case sys is run from another directort
 
-RESPONSE_FILE = f"proc/{PROC_ID}/response.fakeos"
+PROC_DIR = f"proc/{PROC_ID}"
+
+REQUEST_FILE = f"{PROC_DIR}/request.fakeos"
+
+RESPONSE_FILE = f"{PROC_DIR}/response.fakeos"
 
 SYSTEM_RESPONSE_CODES = {
 	0 : "Not repsonded",
@@ -22,4 +28,7 @@ SYSTEM_RESPONSE_CODES = {
 	6 : "Exceptional Error"
 }
 
-SYS_RESP = tuple[int, str]
+SYS_RESP = {
+	"code" : int,
+	"value" : (str, int)
+}

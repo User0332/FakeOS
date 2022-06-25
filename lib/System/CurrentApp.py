@@ -10,7 +10,7 @@ def InitApp() -> SYS_RESP:
 
 def AddFlag(flagname) -> SYS_RESP:
 	with open(REQUEST_FILE, "w") as f:
-		f.write(f'{{ "type" : "AppendApplicationFlag", "data" : "{flagname}" }}')
+		f.write(f'{{ "type" : "AppendApplicationFlag", "data" : {flagname} }}')
 	
 	return AwaitSystemResponse()
 	

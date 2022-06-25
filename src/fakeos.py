@@ -1,9 +1,12 @@
 import pygame
 import os
+# set flag for System.Locals
+_SYSTEM_INIT_OVERRIDE_PROC_ID = 0
 import time as t
 from fakeos_utils import TextButton, valid_chars
 from req import fulfill_reqests
 from System.Process import InitProcess
+from System.IO import File, M_RDONLY
 
 def display_terminal_text(text, pos, screen: pygame.Surface, font: pygame.font.Font, color = "white"):
 		screen.blit(font.render(text, True, color), pos)
@@ -14,12 +17,16 @@ pygame.init()
 
 MAX_X = 1680
 MAX_Y = 1050
-ROOT_PASSWD = "123456"
+
+with File("/cfg/users/passwds", M_RDONLY) as f:
+	ROOT_PASSWD: str = f.LoadJSON()["root"] #currently ignores password storage style
+
+print(ROOT_PASSWD)
 
 middle = (MAX_X/2, MAX_Y/2)
 
 screen = pygame.display.set_mode((MAX_X, MAX_Y))
-pygame.display.set_caption("CCP's FakeOS")
+pygame.display.set_caption("User0332's FakeOS")
 
 arial = pygame.font.SysFont("Arial", 35)
 
@@ -31,7 +38,7 @@ user_input_text = "> "
 running = True
 uptimes = 0
 
-os.system("cls")
+os.system("cls" if os.name == "nt" else "clear")
 
 while running:
 	for event in pygame.event.get():
@@ -63,7 +70,7 @@ while running:
 					if windirokay:
 						user_input_text = "[ OK ] Critical Windows directories intact"
 					else:
-						user_input_text = "[FAIL] Critical Windows directories missing"
+						user_input_text = "[ FAIL ] Critical Windows directories missing"
 						continue
 
 					display_terminal_text(user_input_text, (0, 40), screen, arial)
@@ -78,21 +85,11 @@ while running:
 						import System
 						user_input_text = "[ OK ] System API Loaded"
 					except Exception as e:
-						user_input_text = f"[FAIL] System API failed to Load - {e}"
+						user_input_text = f"[ FAIL ] System API failed to Load - {e}"
 						continue
 					
 					display_terminal_text(user_input_text, (0, 120), screen, arial)
 					t.sleep(0.1)
-
-					user_input_text = "[ OK ] Sys Initialized"
-
-					display_terminal_text(user_input_text, (0, 160), screen, arial)
-					t.sleep(0.1)
-
-					user_input_text = "[ OK ] Sys Proc Launched"
-
-					display_terminal_text(user_input_text, (0, 200), screen, arial)
-					t.sleep(0.5)
 
 					running = False
 
@@ -107,6 +104,12 @@ while running:
 prompt = "ROOT PASSWD> "
 input_passwd = ""
 get_passwd = True
+
+user_input_text = "[ OK ] Sys Proc Launched"
+
+display_terminal_text(user_input_text, (0, 160), screen, arial)
+
+t.sleep(0.5)
 
 while get_passwd:
 	for event in pygame.event.get():
@@ -153,14 +156,14 @@ while True:
 				input_cmd = input_cmd[:-1]
 			elif event.key == pygame.K_RETURN:
 				try:
-					InitProcess(*input_cmd.split())
+					InitProcess(*input_cmd.split()) #sys can fulfill its own requests but for the sake of uniformity and simplicity it will send a request to itself
 					result = ""
 				except BaseException as e:
 					result = str(e)
 
 				input_cmd = ""
 
-	fulfill_reqests()
+	fulfill_reqests() 
 
 	screen.fill("black")
 

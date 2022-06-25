@@ -4,7 +4,7 @@
 			"bin" : {
 				"dirs" : {},
 				"files" : {
-					"myproc" : 8
+					"myproc" : "import System;System.Exit(0)"
 				}
 			},
 			"cfg" : {
@@ -12,17 +12,23 @@
 					"users" : {
 						"dirs" : {},
 						"files" : {
-							"list.cfg" : 5,
-							"permissions.cfg" : 6,
-							"groups.cfg" : 7
+							"list" : "root",
+							"permissions" : "{\"ADMIN\" : {\"/\" : \"rwx\"}}",
+							"groups" : "{\"ADMIN\" : [\"root\"]}",
+							"passwds" : "{\"root\" : \"123456\"}"
 						}
+					},
+					"security" : {
+						"passwd" : "{\"max_days\" : 30, \"min_days\" : 0, \"min_length\" : 6, \"max_length\" : 14, \"store_method\" : \"str\"}"
 					}
 				},
 				"files" : {
-					"passwdstore.cfg" : 3,
-					"syspath.cfg" : 4
+					"system.path" : "/bin\n./bin",
+					"path.ext" : ".py\n.pyc\n.sh",
+					"startup.scripts" : "[]",
+					"shutdown.scripts" : "[]"
 				}
-			},
+			}
 			"users" : {
 				"dirs" : {
 					"root" : {
@@ -30,7 +36,7 @@
 							
 						},
 						"files" : {
-							"virtual_module.py": 9
+							"virtual_module.py" : "def init(): print('this is in the virtual module init func')\ndef otherfunc(): print('this is in the virtual_module.otherfunc()')"
 						}
 					}
 				},

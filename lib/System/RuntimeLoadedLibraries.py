@@ -1,4 +1,4 @@
-from System.IO import File, Console
+from System.IO import File
 from System.Locals import *
 from importlib import import_module
 
@@ -18,7 +18,6 @@ def ImportAttribute(filename, attr):
 	if hasattr(module, attr):
 		return getattr(module, attr)
 	else:
-		Console.ErrWriteLine(f"Could not find attribute {attr} in module {filename}")
 		return NULL
 
 def ImportLibrary(filename):
