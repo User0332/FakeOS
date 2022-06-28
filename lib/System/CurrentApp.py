@@ -1,5 +1,6 @@
-from System.Locals import *
-from System.Machine.FakeOS import AwaitSystemResponse
+from .Locals import *
+from .PyDict import dump
+from .Machine.FakeOS import AwaitSystemResponse
 
 def InitApp() -> SYS_RESP:
 	with open("other/init.fakeos", "w") as f:
@@ -8,16 +9,28 @@ def InitApp() -> SYS_RESP:
 	return AwaitSystemResponse()
 	
 
-def AddFlag(flagname) -> SYS_RESP:
-	with open(REQUEST_FILE, "w") as f:
-		f.write(f'{{ "type" : "AppendApplicationFlag", "data" : {flagname} }}')
+def AddFlag(flagname: str) -> SYS_RESP:
+	with open(REQUEST_FILE, 'w') as f:
+		dump(
+			{
+				"type" : "AppendApplicationFlag", 
+				"data" : f'"{flagname}"'
+			},
+			f
+		)
 	
 	return AwaitSystemResponse()
 	
 
-def RemoveFlag(flagname) -> SYS_RESP:
-	with open(REQUEST_FILE, "w") as f:
-		f.write(f'{{"type" : "RemoveApplicationFlag", "data" : "{flagname}"}}')
+def RemoveFlag(flagname: str) -> SYS_RESP:
+	with open(REQUEST_FILE, 'w') as f:
+		dump(
+			{
+				"type" : "RemoveApplicationFlag",
+				"data" : f'"{flagname}"'
+			},
+			f
+		)
 
 	return AwaitSystemResponse()
 

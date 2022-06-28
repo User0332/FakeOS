@@ -1,12 +1,34 @@
-import pygame
-import os
-# set flag for System.Locals
+# set flag for System.Locals to recognize
+# module as sys
 _SYSTEM_INIT_OVERRIDE_PROC_ID = 0
+
+import sys
+import unittest.mock
+stdout = sys.stdout
+sys.stdout = unittest.mock.Mock() # set stdout to a mock object
+import pygame # so that pygame does not print to console
+sys.stdout = stdout # set stdout back
+import req # for procs variable
+import os
 import time as t
 from fakeos_utils import TextButton, valid_chars
-from req import fulfill_reqests
-from System.Process import InitProcess
-from System.IO import File, M_RDONLY
+from System.PyDict import loads
+from System.IO import M_RDONLY
+from traceback import format_exc
+from System.Machine.FakeOS import Stat
+from req import (
+	Sys_Close,
+	fulfill_reqests, 
+	Sys_OpenFile, 
+	Sys_ReadFile,
+	InitProcess
+)
+
+del (
+	unittest,
+	sys,
+	stdout
+)
 
 def display_terminal_text(text, pos, screen: pygame.Surface, font: pygame.font.Font, color = "white"):
 		screen.blit(font.render(text, True, color), pos)
@@ -18,10 +40,24 @@ pygame.init()
 MAX_X = 1680
 MAX_Y = 1050
 
-with File("/cfg/users/passwds", M_RDONLY) as f:
-	ROOT_PASSWD: str = f.LoadJSON()["root"] #currently ignores password storage style
+passwd_file = Sys_OpenFile("/cfg/users/passwds", M_RDONLY, 0)["value"]
 
-print(ROOT_PASSWD)
+numb = Stat("/cfg/users/passwds").size
+
+try:
+	ROOT_PASSWD: str = loads(Sys_ReadFile(passwd_file, numb, 0)["value"])["root"]
+except SyntaxError:
+	print(
+		"Fatal System Error: configuration file "
+		"'/cfg/users/passwds' is not in the right format! "
+		"Defaulting to { 'root' : '' }"
+	)
+
+	ROOT_PASSWD = {}
+	input("Enter to continue... ")
+
+Sys_Close(passwd_file, 0)
+
 
 middle = (MAX_X/2, MAX_Y/2)
 
@@ -50,7 +86,7 @@ while running:
 			if char in valid_chars:
 				user_input_text+=char
 			elif event.key == pygame.K_BACKSPACE:
-				user_input_text = user_input_text[:-1]
+				if len(user_input_text) > 2: user_input_text = user_input_text[:-1]
 			elif event.key == pygame.K_RETURN:
 				if user_input_text == "> boot":
 					screen.fill("black")
@@ -156,10 +192,23 @@ while True:
 				input_cmd = input_cmd[:-1]
 			elif event.key == pygame.K_RETURN:
 				try:
-					InitProcess(*input_cmd.split()) #sys can fulfill its own requests but for the sake of uniformity and simplicity it will send a request to itself
+					if not input_cmd: continue
+					
+					args = input_cmd.split()
+					name = args[0]
+					args = [] if len(args) < 2 else args[1:]
+
+					InitProcess(
+						name,
+						args,
+						max(req.procs)+1,
+						0,
+						req.procs[0]
+					)
 					result = ""
 				except BaseException as e:
 					result = str(e)
+					print(f"[ System Log ] {format_exc()}")
 
 				input_cmd = ""
 

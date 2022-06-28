@@ -1,15 +1,14 @@
-from System.IO import File
-from System.Locals import *
+from .IO import File, M_RDONLY
+from .Locals import *
 from importlib import import_module
 
 def ImportAttribute(filename, attr):
-	mod = File(filename)
-	code = mod.ReadAll()
+	mod = File(filename, M_RDONLY)
+	code = mod.Read()
 	
 	with open("System/systemp.py", "w") as f:
 		f.write(code)
 
-	print(code)
 	module = import_module("System.systemp")
 
 	with open("System/systemp.py", "w") as f:
@@ -21,8 +20,8 @@ def ImportAttribute(filename, attr):
 		return NULL
 
 def ImportLibrary(filename):
-	mod = File(filename)
-	code = mod.ReadAll()
+	mod = File(filename, M_RDONLY)
+	code = mod.Read()
 
 	with open("System/systemp.py", "w") as f:
 		f.write(code)
@@ -34,13 +33,3 @@ def ImportLibrary(filename):
 		pass
 
 	return module
-
-def LoadToFile(libname, filename):
-	mod = File(libname)
-	code = mod.ReadAll()
-	
-	try:
-		with open(filename, "w") as f:
-			f.write(code)
-	except OSError as e:
-		return e
