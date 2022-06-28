@@ -77,6 +77,9 @@ uptimes = 0
 os.system("cls" if os.name == "nt" else "clear")
 
 while running:
+	screen.fill("black")
+	display_terminal_text(user_input_text, (0, 0), screen, arial)
+
 	for event in pygame.event.get():
 		if event.type == pygame.QUIT:
 			pygame.quit()
@@ -130,9 +133,6 @@ while running:
 					running = False
 
 				user_input_text = "> "
-				
-	screen.fill("black")
-	display_terminal_text(user_input_text, (0, 0), screen, arial)
 
 
 # SYS PROC
