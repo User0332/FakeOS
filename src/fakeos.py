@@ -97,7 +97,7 @@ while running:
 					t.sleep(0.1)
 
 					windirokay = (
-						os.path.exists("applications") and os.path.isdir("applications") and
+						os.path.exists("lib") and os.path.isdir("lib") and
 						os.path.exists("assets") and os.path.isdir("assets") and
 						os.path.exists("filesystem") and os.path.isdir("filesystem") and
 						os.path.exists("proc") and os.path.isdir("proc")
