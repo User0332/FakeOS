@@ -12,9 +12,10 @@ import req # for procs variable
 import os
 import time as t
 from fakeos_utils import TextButton, valid_chars
+from traceback import format_exc
+from ctypes import windll
 from System.PyDict import loads
 from System.IO import M_RDONLY
-from traceback import format_exc
 from System.Machine.FakeOS import Stat
 from req import (
 	Sys_Close,
@@ -24,10 +25,14 @@ from req import (
 	InitProcess
 )
 
+argv = sys.argv
+user32 = windll.user32
+
 del (
 	unittest,
 	sys,
-	stdout
+	stdout,
+	windll
 )
 
 def display_terminal_text(text, pos, screen: pygame.Surface, font: pygame.font.Font, color = "white"):
@@ -37,15 +42,15 @@ def display_terminal_text(text, pos, screen: pygame.Surface, font: pygame.font.F
 
 pygame.init()
 
-MAX_X = 1680
-MAX_Y = 1050
+MAX_X, MAX_Y = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
 
 passwd_file = Sys_OpenFile("/cfg/users/passwds", M_RDONLY, 0)["value"]
 
 numb = Stat("/cfg/users/passwds").size
 
 try:
-	ROOT_PASSWD: str = loads(Sys_ReadFile(passwd_file, numb, 0)["value"])["root"]
+	PASSWDS: str = loads(Sys_ReadFile(passwd_file, numb, 0)["value"])
+	if "root" not in PASSWDS: raise SyntaxError()
 except SyntaxError:
 	print(
 		"Fatal System Error: configuration file "
@@ -53,7 +58,7 @@ except SyntaxError:
 		"Defaulting to { 'root' : '' }"
 	)
 
-	ROOT_PASSWD = {}
+	PASSWDS = { "root": '' }
 	input("Enter to continue... ")
 
 Sys_Close(passwd_file, 0)
@@ -159,7 +164,7 @@ while get_passwd:
 			elif event.key == pygame.K_BACKSPACE:
 				input_passwd = input_passwd[:-1]
 			elif event.key == pygame.K_RETURN:
-				if input_passwd == ROOT_PASSWD:
+				if input_passwd == PASSWDS["root"]:
 					input_passwd = ""
 					get_passwd = False
 
