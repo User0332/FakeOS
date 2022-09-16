@@ -24,4 +24,4 @@ A simulation of an operating system/VM made in Python 3.9
 
 ## Running FakeOS
 
-To run FakeOS, you must run the fakeos.py file from the root directory of the project (ex. `python src/fakeos.py`). You must then type in `boot` and hit enter. Following that, you must enter the root password (defaulted to nothing, so just hit enter), and then it will bring you to a shell where you can execute any program specified in the system PATH (/cfg/system.path).
+To run FakeOS, you must run the fakeos.py file from the root directory of the project (ex. `python src/fakeos.py`). You must then type in `boot` and hit enter. Following that, you must enter the root password (defaulted to nothing, so just hit enter), and then it will bring you to a shell where you can execute any program specified in the system PATH (`/cfg/system.path`).
