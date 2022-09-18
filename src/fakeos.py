@@ -42,6 +42,7 @@ def display_terminal_text(text, pos, screen: pygame.Surface, font: pygame.font.F
 
 pygame.init()
 
+# Get dimensions/resolution of the screen.
 MAX_X, MAX_Y = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
 
 passwd_file = Sys_OpenFile("/cfg/users/passwds", M_RDONLY, 0)["value"]

@@ -6,9 +6,10 @@ have to wait for a system response. It is recommended that you use the
 System API and not this library for executing functions. All modules in 
 the src/ folder should only be used by the kernel. This library also 
 contains a function for reading and responding to requests from programs.
-That function, fulfill_requests, is called periodically by the system. All 
-FakeOS-related functions in the System API eventually end up in one or 
-more indirect (through the request system) calls to this library."""
+That function, fulfill_requests, is called periodically by the system. 
+All functions in the System API except for most under System.Machine 
+eventually correspond to one or more indirect (through the request system) 
+calls to this library."""
 
 import os
 import subprocess
