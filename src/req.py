@@ -1,4 +1,4 @@
-"""REQ - Fulfiller of program requests and 'Real Execution Queries
+"""REQ - Fulfiller of program requests and 'Real Execution Queries'
 
 This module provides an interface to the kernel-level FakeOS functions. 
 Functions called from this library are executed on the spot, you do not 
