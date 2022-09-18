@@ -203,8 +203,8 @@ while True:
 					name = args[0]
 					args = [] if len(args) < 2 else args[1:]
 
-					InitProcess(
-						name,
+					InitProcess( # Kernel-level function (req.InitProcess), 
+						name,    # not System.Process.InitProcess
 						args,
 						max(req.procs)+1,
 						0,

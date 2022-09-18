@@ -1,7 +1,21 @@
+"""REQ - Fulfiller of program requests and 'Real Execution Queries
+
+This module provides an interface to the kernel-level FakeOS functions. 
+Functions called from this library are executed on the spot, you do not 
+have to wait for a system response. It is recommended that you use the 
+System API and not this library for executing functions. All modules in 
+the src/ folder should only be used by the kernel. This library also 
+contains a function for reading and responding to requests from programs.
+That function, fulfill_requests, is called periodically by the system. All 
+FakeOS-related functions in the System API eventually end up in one or 
+more indirect (through the request system) calls to this library."""
+
 import os
 import subprocess
 import shutil
 import sys
+from typing import Union
+from types import ModuleType
 import System.PyDict as json
 from System.Machine.FakeOS import (
 	_ParseDirectory, 
@@ -20,7 +34,17 @@ from System.IO import (
 	SEEK_END,
 )
 
-procs = {
+procs: dict[
+	int, 
+	dict[
+		str, 
+		Union[
+			str, 
+			ModuleType, 
+			subprocess.Popen
+		]
+	]
+] = {
 	0 : {
 		"name" : "sys",
 		"module" : sys.modules['__main__']
