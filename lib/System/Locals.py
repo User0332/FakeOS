@@ -1,7 +1,7 @@
 from sys import modules, argv
 from os import getcwd
 from os.path import join
-from typing import Union
+from typing import Any, TypedDict, Union
 
 ARGV = argv #for constant recognition
 
@@ -33,7 +33,10 @@ SYSTEM_RESPONSE_CODES = {
 	6 : "Exceptional Error"
 }
 
-SYS_RESP = {
-	"code" : int,
-	"value" : Union[int, str]
-}
+class SYS_RESP(TypedDict):	
+	code: int
+	value: Union[int, str]
+
+class SYS_REQ(TypedDict):
+	type: str
+	data: Any

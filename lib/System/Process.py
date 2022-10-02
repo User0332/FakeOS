@@ -13,6 +13,9 @@ def Kill(proc_id: int) -> SYS_RESP:
 			f
 		)
 	
+	if proc_id == PROC_ID: # process is killing itself
+		return
+	
 	return AwaitSystemResponse()
 
 def GetRunningProcesses() -> list:

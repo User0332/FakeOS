@@ -35,9 +35,9 @@ del (
 	windll
 )
 
-def display_terminal_text(text, pos, screen: pygame.Surface, font: pygame.font.Font, color = "white"):
+def display_terminal_text(text, pos, screen: pygame.Surface, font: pygame.font.Font, color = "white", update: bool=True):
 		screen.blit(font.render(text, True, color), pos)
-		pygame.display.update()
+		pygame.display.update() if update else None
 
 
 pygame.init()
@@ -184,12 +184,20 @@ cmd_locals = {}
 cmd_globals = {}
 input_cmd = ""
 result = ""
+selected_win = None
 
 while True:
 	for event in pygame.event.get():
 		if event.type == pygame.QUIT:
 			pygame.quit()
 			exit(0)
+		if event.type == pygame.MOUSEBUTTONDOWN:
+			for proc in req.procs.values():
+				for win in proc["windows"]:
+					if win["rect"].collidepoint(*pygame.mouse.get_pos()):
+						selected_win = win
+		if event.type == pygame.MOUSEBUTTONUP and selected_win:
+			selected_win = None
 		if event.type == pygame.KEYDOWN:
 			char = event.unicode
 			if char in valid_chars:
@@ -222,7 +230,21 @@ while True:
 
 	screen.fill("black")
 
-	display_terminal_text(prompt+input_cmd, (0, 0), screen, arial)
-	display_terminal_text(result, (0, 40), screen, arial)
+	display_terminal_text(prompt+input_cmd, (0, 0), screen, arial, update=False)
+	display_terminal_text(result, (0, 40), screen, arial, update=False)
+
+	if selected_win:
+		selected_win["rect"] = selected_win["surface"].get_rect(
+			center=pygame.mouse.get_pos()
+		)
+
+	for proc in req.procs.values():
+		for window in proc["windows"]:
+			screen.blit(
+				window["surface"],
+				window["rect"]
+			)
+
+
 
 	pygame.display.update()

@@ -14,8 +14,9 @@ calls to this library."""
 import os
 import subprocess
 import shutil
+import pygame
 import sys
-from typing import Union
+from typing import TypedDict, Union
 from types import ModuleType
 import System.PyDict as json
 from System.Machine.FakeOS import (
@@ -34,23 +35,28 @@ from System.IO import (
 	SEEK_CUR,
 	SEEK_END,
 )
+class WindowType(TypedDict):
+	id: str
+	x: int
+	y: int
+	surface: pygame.Surface
+	rect: pygame.Rect
 
-procs: dict[
-	int, 
-	dict[
-		str, 
-		Union[
-			str, 
-			ModuleType, 
-			subprocess.Popen
-		]
-	]
-] = {
+class ProcType(TypedDict):
+	name: str
+	module: Union[ModuleType, subprocess.Popen]
+	windows: list[WindowType]
+
+
+procs: dict[int, ProcType] = {
 	0 : {
 		"name" : "sys",
-		"module" : sys.modules['__main__']
+		"module" : sys.modules['__main__'],
+		"windows": []
 	}
 }
+
+
 
 IN_USE = []
 
@@ -357,7 +363,8 @@ def InitProcess(name: str, args: list, new_id: int, caller_id: int, caller: dict
 
 	procs[new_id] = {
 		"name" : name,
-		"module" : subprocess.Popen(["python", f"proc/{new_id}/module.fakeos"]+args)
+		"module" : subprocess.Popen(["python", f"proc/{new_id}/module.fakeos"]+args),
+		"windows": []
 	}
 
 	return {
@@ -365,6 +372,66 @@ def InitProcess(name: str, args: list, new_id: int, caller_id: int, caller: dict
 			"value" : new_id
 	}
 
+def AllocateWindow(caller_id: int, x: int, y: int, id: str):
+	for win in procs[caller_id]["windows"]:
+		if win["id"] == id: return {
+			"code": 3,
+			"value": "A window with the specified ID has already been allocated!"
+		}
+
+	surface = pygame.Surface((x, y))
+	rect = surface.get_rect(topleft=(0, 0))
+
+	surface.fill("white")
+
+	procs[caller_id]["windows"].append(
+		{
+			"id": id,
+			'x': x,
+			'y': y,
+			"surface": surface,
+			"rect": rect
+		}
+	)
+
+	return {
+		"code": 2,
+		"value": id
+	}
+
+def DeAllocateWindow(caller_id: int, id: str):
+	for win in procs[caller_id]["windows"]:
+		if win["id"] == id:
+			
+			procs[caller_id]["windows"].remove(win)
+			return {
+				"code": 1,
+				"value": id
+			}
+
+	return {
+		"code": 5,
+		"value": f"No window found with id '{id}'!"
+	}
+
+def Window_AddText(caller_id: int, id: str, text: str, x: int, y: int, size: int, color: str):
+	for win in procs[caller_id]["windows"]:
+		if win["id"] == id:
+			surface = win["surface"]
+			surface.blit(
+				pygame.font.SysFont("Arial", size).render(text, False, color),
+				(x, y)
+			)
+
+			return {
+				"code": 1,
+				"value": id
+			}
+
+	return {
+		"code": 5,
+		"value": f"No window found with id '{id}'!"
+	}
 
 def fulfill_reqests():
 	for caller_id, caller in list(procs.items()): #use list to create a copy of the dict
@@ -458,6 +525,30 @@ def fulfill_reqests():
 			with open(f"{directory}/response.fakeos", 'w') as f:
 				json.dump(
 					Sys_Close(data["fd"], caller_id),
+					f
+				)
+		elif req == "AllocateWindow":
+			with open(f"{directory}/response.fakeos", 'w') as f:
+				json.dump(
+					AllocateWindow(
+						caller_id, **data
+					),
+					f
+				)
+		elif req == "DeAllocateWindow":
+			with open(f"{directory}/response.fakeos", 'w') as f:
+				json.dump(
+					DeAllocateWindow(
+						caller_id, data["id"]
+					),
+					f
+				)
+		elif req == "Window.AddText":
+			with open(f"{directory}/response.fakeos", 'w') as f:
+				json.dump(
+					Window_AddText(
+						caller_id, **data
+					),
 					f
 				)
 

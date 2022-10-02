@@ -1,6 +1,5 @@
 from ..Locals import *
 from ..PyDict import load, dump
-from ..Process import InitProcess
 from os.path import getsize
 
 class SystemError(Exception): pass
@@ -51,8 +50,27 @@ def AwaitSystemResponse() -> SYS_RESP:
 		
 	return data
 
+def WriteRequest(body: SYS_REQ) -> SYS_RESP:
+	with open(REQUEST_FILE, 'w') as f:
+		dump(
+			body,
+			f
+		)
+
+	return AwaitSystemResponse()
+
 def SysCommand(command: str) -> SYS_RESP:
-	return InitProcess(*command.split())
+	with open(REQUEST_FILE, 'w') as f:
+		dump(
+			{
+				"type" : "InitProcess", 
+				"data" : command.split()
+			},
+			f
+		)
+
+	return AwaitSystemResponse()
+
 
 def GetCwd() -> str:
 	return _CWD

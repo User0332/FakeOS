@@ -1,0 +1,10 @@
+import time
+import System.Display
+
+window = System.Display.Window(200, 200, "mywindow")
+window.AddText("My Window!", 50, 50, 20)
+time.sleep(2)
+
+window.Delete()
+
+System.Exit(0)
