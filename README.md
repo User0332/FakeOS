@@ -15,7 +15,7 @@ A simulation of an operating system/VM made in Python 3.9
 
 **src/** - Source of the fake kernel
 
-**lib/System/** - This is the folder that holds the System API, adding {fakeos-directory}/lib/ to PYTHONPATH will allow the OS to run and will allow your to import and use the System API
+**lib/System/** - This is the folder that holds the System API, adding {fakeos-directory}/lib/ to PYTHONPATH will allow the OS to run and will allow you to import and use the System API
 
 **proc/** - Windows filesystem holding process information, each folder number represents a process id
 
@@ -24,4 +24,4 @@ A simulation of an operating system/VM made in Python 3.9
 
 ## Running FakeOS
 
-To run FakeOS, you must run the fakeos.py file from the root directory of the project (ex. `python src/fakeos.py`). You must then type in `boot` and hit enter. Following that, you must enter the root password (defaulted to nothing, so just hit enter), and then it will bring you to a shell where you can execute any program specified in the system PATH (`/cfg/system.path`).
+To run FakeOS, you must run the fakeos.py file from the root directory of the project (ex. `python src/fakeos.py`). You must then type in `boot` and hit enter. Following that, you must enter the root password (defaulted to nothing, so just hit enter), and then it will bring you to a shell where you can execute any program specified in the system PATH (`/cfg/system.path`). You can run the program `testwindow` for a draggable window to appear for 10 seconds.
