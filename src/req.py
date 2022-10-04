@@ -15,6 +15,7 @@ import os
 import subprocess
 import shutil
 import pygame
+import dill
 import sys
 from typing import TypedDict, Union
 from types import ModuleType
@@ -414,18 +415,21 @@ def DeAllocateWindow(caller_id: int, id: str):
 		"value": f"No window found with id '{id}'!"
 	}
 
-def Window_AddText(caller_id: int, id: str, text: str, x: int, y: int, size: int, color: str):
+def Window_EvalExpr(caller_id: int, id: str, expr: str):
 	for win in procs[caller_id]["windows"]:
 		if win["id"] == id:
 			surface = win["surface"]
-			surface.blit(
-				pygame.font.SysFont("Arial", size).render(text, False, color),
-				(x, y)
-			)
+			try:
+				res = eval(expr, { "window": surface, "pygame": pygame })
+			except Exception as e:
+				return {
+					"code": 6,
+					"value": str(e)
+				}
 
 			return {
 				"code": 1,
-				"value": id
+				"value": dill.dumps(res)
 			}
 
 	return {
@@ -435,8 +439,9 @@ def Window_AddText(caller_id: int, id: str, text: str, x: int, y: int, size: int
 
 def fulfill_reqests():
 	for caller_id, caller in list(procs.items()): #use list to create a copy of the dict
-		if os.path.getsize(f"proc/{caller_id}/request.fakeos") == 0:
-			continue
+		try:
+			if os.path.getsize(f"proc/{caller_id}/request.fakeos") == 0: continue
+		except FileNotFoundError: continue # process probably just killed
 			
 		directory = f"proc/{caller_id}"
 
@@ -463,7 +468,8 @@ def fulfill_reqests():
 	
 		elif req == "KillProcess":
 			if data in procs:
-				procs[data]["module"].kill()
+				try: procs[data]["module"].kill()
+				except AttributeError: continue # someone is trying to kill sys?
 				del procs[data]
 
 				for file in _GetDescriptorTable(data).values():
@@ -527,7 +533,7 @@ def fulfill_reqests():
 					Sys_Close(data["fd"], caller_id),
 					f
 				)
-		elif req == "AllocateWindow":
+		elif req == "Window.Allocate":
 			with open(f"{directory}/response.fakeos", 'w') as f:
 				json.dump(
 					AllocateWindow(
@@ -535,7 +541,7 @@ def fulfill_reqests():
 					),
 					f
 				)
-		elif req == "DeAllocateWindow":
+		elif req == "Window.DeAllocate":
 			with open(f"{directory}/response.fakeos", 'w') as f:
 				json.dump(
 					DeAllocateWindow(
@@ -543,10 +549,10 @@ def fulfill_reqests():
 					),
 					f
 				)
-		elif req == "Window.AddText":
+		elif req == "Window.EvalExpr":
 			with open(f"{directory}/response.fakeos", 'w') as f:
 				json.dump(
-					Window_AddText(
+					Window_EvalExpr(
 						caller_id, **data
 					),
 					f

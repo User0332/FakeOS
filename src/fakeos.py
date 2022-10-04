@@ -2,16 +2,15 @@
 # module as sys
 _SYSTEM_INIT_OVERRIDE_PROC_ID = 0
 
-import sys
+from sys import argv
 import unittest.mock
-stdout = sys.stdout
-sys.stdout = unittest.mock.Mock() # set stdout to a mock object
-import pygame # so that pygame does not print to console
-sys.stdout = stdout # set stdout back
+import contextlib
+with contextlib.redirect_stdout(unittest.mock.Mock()):
+	import pygame
 import req # for procs variable
 import os
 import time as t
-from fakeos_utils import TextButton, valid_chars
+from fakeos_utils import valid_chars
 from traceback import format_exc
 from ctypes import windll
 from System.PyDict import loads
@@ -25,14 +24,11 @@ from req import (
 	InitProcess
 )
 
-argv = sys.argv
 user32 = windll.user32
 
 del (
 	unittest,
-	sys,
-	stdout,
-	windll
+	contextlib
 )
 
 def display_terminal_text(text, pos, screen: pygame.Surface, font: pygame.font.Font, color = "white", update: bool=True):
@@ -205,25 +201,25 @@ while True:
 			elif event.key == pygame.K_BACKSPACE:
 				input_cmd = input_cmd[:-1]
 			elif event.key == pygame.K_RETURN:
-				try:
-					if not input_cmd: continue
-					
-					args = input_cmd.split()
-					name = args[0]
-					args = [] if len(args) < 2 else args[1:]
+				if not input_cmd: continue
+				
+				args = input_cmd.split()
+				name = args[0]
+				args = [] if len(args) < 2 else args[1:]
 
-					InitProcess( # Kernel-level function (req.InitProcess), 
-						name,    # not System.Process.InitProcess
-						args,
-						max(req.procs)+1,
-						0,
-						req.procs[0]
-					)
-					result = ""
-				except BaseException as e:
-					result = str(e)
-					print(f"[ System Log ] {format_exc()}")
+				if name == "exit": 
+					pygame.quit()
+					exit(0)
 
+				InitProcess( # Kernel-level function (req.InitProcess), 
+					name,    # not System.Process.InitProcess
+					args,
+					max(req.procs)+1,
+					0,
+					req.procs[0]
+				)
+
+				result = ""
 				input_cmd = ""
 
 	fulfill_reqests() 
