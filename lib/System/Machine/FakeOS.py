@@ -12,11 +12,11 @@ class StatObject:
 
 _CWD = '/' # set this to the directory the process was launched in
 
-def _RetrieveFileSystemObject() -> dict:
+def _RetrieveFileSystemObject() -> dict[str, str]:
 	with open("filesystem/files.py", 'r') as f:
 		return load(f)
 
-def _SetFileSystemObject(filesystem: str) -> None:
+def _SetFileSystemObject(filesystem: dict[str, str]) -> None:
 	with open("filesystem/files.py", 'w') as f:
 		dump(filesystem, f)
 

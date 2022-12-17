@@ -4,6 +4,8 @@ from .Machine.FakeOS import AwaitSystemResponse, GetCwd, SystemError
 
 M_RDONLY = 0
 M_WRONLY = 1
+M_RBYTES = 2
+M_WBYTES = 3
 
 SEEK_SET = 0
 SEEK_CUR = 1

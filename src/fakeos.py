@@ -2,7 +2,6 @@
 # module as sys
 _SYSTEM_INIT_OVERRIDE_PROC_ID = 0
 
-from sys import argv
 import unittest.mock
 import contextlib
 with contextlib.redirect_stdout(unittest.mock.Mock()):
@@ -10,17 +9,17 @@ with contextlib.redirect_stdout(unittest.mock.Mock()):
 import req # for procs variable
 import os
 import time as t
-from fakeos_utils import valid_chars
-from traceback import format_exc
+import traceback as trace
+import datetime as date
 from ctypes import windll
 from System.PyDict import loads
-from System.IO import M_RDONLY
-from System.Machine.FakeOS import Stat
+from fakeos_utils import (
+	valid_chars,
+	read_file,
+	write_file
+)
 from req import (
-	Sys_Close,
-	fulfill_reqests, 
-	Sys_OpenFile, 
-	Sys_ReadFile,
+	fulfill_reqests,
 	InitProcess
 )
 
@@ -41,25 +40,60 @@ pygame.init()
 # Get dimensions/resolution of the screen.
 MAX_X, MAX_Y = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
 
-passwd_file = Sys_OpenFile("/cfg/users/passwds", M_RDONLY, 0)["value"]
+SYSTEM_CONF = {}
 
-numb = Stat("/cfg/users/passwds").size
+def log(data: str):
+	with open("./sys.log", 'a') as f:
+		f.write(
+			f"{date.datetime.now()} - {data}\n"
+		)
 
-try:
-	PASSWDS: str = loads(Sys_ReadFile(passwd_file, numb, 0)["value"])
-	if "root" not in PASSWDS: raise SyntaxError()
-except SyntaxError:
-	print(
-		"Fatal System Error: configuration file "
-		"'/cfg/users/passwds' is not in the right format! "
-		"Defaulting to { 'root' : '' }"
-	)
+def sysconf_load(): # load all config data of the system
+	try:
+		PASSWDS: dict[str, str] = loads(read_file("/cfg/users/passwds"))
+		if "root" not in PASSWDS: raise SyntaxError()
+	except SyntaxError:
+		print(
+			"Fatal Error: configuration file "
+			"'/cfg/users/passwds' is not in the right format! "
+			"Defaulting to { 'root' : 0 }"
+		)
 
-	PASSWDS = { "root": '' }
-	input("Enter to continue... ")
+		PASSWDS = { "root": 0 }
+		input("Enter to continue... ")
 
-Sys_Close(passwd_file, 0)
+	try:
+		PASSWD_CONFIG: dict[str, str] = loads(
+			read_file("/cfg/security/passwd")
+		)
 
+		all_keys_valid = (
+			(type(PASSWD_CONFIG.get("max_days")) is int) and
+			(type(PASSWD_CONFIG.get("min_days")) is int) and
+			(type(PASSWD_CONFIG.get("min_length")) is int) and
+			(
+				PASSWD_CONFIG.get("store_method") in
+				("pyhash-common",) # add more possibilites later??? maybe
+			)
+		)
+
+		if not all_keys_valid: raise SyntaxError()
+	except SyntaxError:
+		print(
+			"Fatal Error: configuration file "
+			"'/cfg/security/passwd' is not in the right format! "
+			" Defaulting to {'max_days' : 30, 'min_days' : 0, 'min_length' : 6, 'store_method' : 'str'}"
+		)
+
+		PASSWD_CONFIG = {
+			"max_days": 30, 
+			"min_days": 0, 
+			"min_length": 6, 
+			"store_method" : "pyhash-common"
+		}
+
+	SYSTEM_CONF["PASSWDS"] = PASSWDS
+	SYSTEM_CONF["PASSWD_CONF"] = PASSWD_CONFIG
 
 middle = (MAX_X/2, MAX_Y/2)
 
@@ -110,12 +144,14 @@ while running:
 
 					if windirokay:
 						user_input_text = "[ OK ] Critical Windows directories intact"
+						display_terminal_text(user_input_text, (0, 40), screen, arial)
+						t.sleep(1)
 					else:
 						user_input_text = "[ FAIL ] Critical Windows directories missing"
+						display_terminal_text(user_input_text, (0, 40), screen, arial)
+						t.sleep(1)
+						user_input_text = "> "				
 						continue
-
-					display_terminal_text(user_input_text, (0, 40), screen, arial)
-					t.sleep(0.1)
 
 					user_input_text = "Initializing System API..."
 
@@ -127,10 +163,29 @@ while running:
 						user_input_text = "[ OK ] System API Loaded"
 					except Exception as e:
 						user_input_text = f"[ FAIL ] System API failed to Load - {e}"
+						log(f"{type(e).__name__}: {e}, trace: {trace.format_exc()}")
 						continue
-					
-					display_terminal_text(user_input_text, (0, 120), screen, arial)
+					finally:
+						display_terminal_text(user_input_text, (0, 120), screen, arial)
+						t.sleep(1)
+						user_input_text = "> "
+
+					user_input_text = "Loading System Configurations"
+
+					display_terminal_text(user_input_text, (0, 160), screen, arial)
 					t.sleep(0.1)
+
+					try:
+						sysconf_load()
+						user_input_text = "[ OK ] System Config Loaded"
+					except Exception as e:
+						user_input_text = f"[ FAIL ] System Config Failed to Load - {e}"
+						log(f"{type(e).__name__}: {e}, trace: {trace.format_exc()}")
+						continue
+					finally:
+						display_terminal_text(user_input_text, (0, 200), screen, arial)
+						t.sleep(1)
+						user_input_text = "> "
 
 					running = False
 
@@ -145,7 +200,7 @@ get_passwd = True
 
 user_input_text = "[ OK ] Sys Proc Launched"
 
-display_terminal_text(user_input_text, (0, 160), screen, arial)
+display_terminal_text(user_input_text, (0, 240), screen, arial)
 
 t.sleep(0.5)
 
@@ -161,7 +216,9 @@ while get_passwd:
 			elif event.key == pygame.K_BACKSPACE:
 				input_passwd = input_passwd[:-1]
 			elif event.key == pygame.K_RETURN:
-				if input_passwd == PASSWDS["root"]:
+				# implement check for hashing type later when new
+				# hash types are acutally introduced
+				if hash(input_passwd) == SYSTEM_CONF["PASSWDS"]["root"]:
 					input_passwd = ""
 					get_passwd = False
 

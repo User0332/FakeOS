@@ -1,0 +1,1 @@
+Get-Content .\sys.log

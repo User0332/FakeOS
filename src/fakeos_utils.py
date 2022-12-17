@@ -1,4 +1,33 @@
+from System.IO import M_RDONLY, M_WRONLY
+from System.Locals import SYS_RESP
+from System.Machine.FakeOS import Stat
 import pygame
+from req import (
+	Sys_Close,
+	Sys_OpenFile, 
+	Sys_ReadFile,
+	Sys_WriteFile
+)
+
+
+def read_file(fname: str) -> str:
+	file = Sys_OpenFile(fname, M_RDONLY, 0)["value"]
+	numb = Stat(fname).size
+	
+	data: str = Sys_ReadFile(file, numb, 0)["value"]
+
+	Sys_Close(file, 0)
+
+	return data
+
+def write_file(fname: str, data: str) -> SYS_RESP:
+	file = Sys_OpenFile(fname, M_WRONLY, 0)["value"]
+	
+	resp = Sys_WriteFile(file, data, 0)
+
+	Sys_Close(file, 0)
+
+	return data
 
 class Button:
 	def __init__(self, pos: tuple, surface: pygame.Surface, screen: pygame.Surface):

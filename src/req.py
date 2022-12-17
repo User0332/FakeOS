@@ -30,24 +30,33 @@ from System.Machine.FakeOS import (
 	SystemError
 )
 from System.IO import (
-	M_RDONLY, 
-	M_WRONLY, 
+	M_RDONLY,
+	M_WRONLY,
+	M_RBYTES,
+	M_WBYTES,
 	SEEK_SET,
 	SEEK_CUR,
 	SEEK_END,
 )
+
+class DescriptorTableEntry(TypedDict):
+	contents: Union[bytes, None]
+	filename: str
+	mode: int
+	pos: int
+
 class WindowType(TypedDict):
 	id: str
 	x: int
 	y: int
 	surface: pygame.Surface
 	rect: pygame.Rect
+	vars: dict[str]
 
 class ProcType(TypedDict):
 	name: str
 	module: Union[ModuleType, subprocess.Popen]
 	windows: list[WindowType]
-
 
 procs: dict[int, ProcType] = {
 	0 : {
@@ -93,11 +102,11 @@ def LoadToFile(filename: str, win_filename: str, proc_id: int):
 	finally:
 		Sys_Close(mod, proc_id)
 
-def _GetDescriptorTable(proc_id) -> dict:
+def _GetDescriptorTable(proc_id) -> dict[int, DescriptorTableEntry]:
 	with open(f"proc/{proc_id}/fd/table.py", 'r') as f:
 		return json.load(f)
 
-def _WriteDescriptorTable(proc_id, table: dict) -> None:
+def _WriteDescriptorTable(proc_id, table: dict[int, DescriptorTableEntry]) -> None:
 	with open(f"proc/{proc_id}/fd/table.py", 'w') as f:
 		json.dump(table, f)
 
@@ -106,7 +115,8 @@ def Sys_OpenFile(filename: str, mode: int, proc_id: int):
 	path = filename.split('/')
 	directory = '/'.join(path[:-1])
 	file = path[-1]
-	if not IsFile(filename) and mode == M_RDONLY:
+
+	if not IsFile(filename) and mode in (M_RDONLY, M_RBYTES):
 		return {
 			"code" : 5,
 			"value" : "File doesn't exist"
@@ -129,12 +139,12 @@ def Sys_OpenFile(filename: str, mode: int, proc_id: int):
 	table = _GetDescriptorTable(proc_id)
 	fd: int = max(table.keys())+1
 	
-	if mode == M_RDONLY:
+	if mode in (M_RDONLY, M_RBYTES):
 		table[fd] = {
 			"mode" : mode, # for compatibility with other read modes in the future
 			"pos" : 0,
 			"filename" : filename, # for closing
-			"contents" : dirobj['files'][file]
+			"contents" : dirobj["files"][file]
 		}
 
 		_WriteDescriptorTable(proc_id, table)
@@ -145,7 +155,7 @@ def Sys_OpenFile(filename: str, mode: int, proc_id: int):
 			"value" : fd
 		}
 		
-	if mode == M_WRONLY:
+	if mode in (M_WRONLY, M_WBYTES):
 		directory = (x for x in path[:-1] if x)
 		filesystem = _RetrieveFileSystemObject()
 
@@ -177,7 +187,7 @@ def Sys_OpenFile(filename: str, mode: int, proc_id: int):
 		"value" : "Invalid file mode"
 	}
 
-def Sys_WriteFile(fd: int, buff: str, proc_id: int):
+def Sys_WriteFile(fd: int, buff: Union[str, bytes], proc_id: int):
 	table = _GetDescriptorTable(proc_id)
 	filesystem = _RetrieveFileSystemObject()
 	working_dir = filesystem['/']
@@ -188,12 +198,6 @@ def Sys_WriteFile(fd: int, buff: str, proc_id: int):
 			"value" : "Bad file descriptor"
 		}
 
-	if table[fd]["mode"] !=  M_WRONLY:
-		return {
-			"code" : 6,
-			"value" : "Tried to write to a read only fd"
-		}
-
 	path: str = table[fd]["filename"]
 	directory = (x for x in path.split('/')[:-1] if x)
 	file = path.split('/')[-1]
@@ -202,13 +206,19 @@ def Sys_WriteFile(fd: int, buff: str, proc_id: int):
 		working_dir = working_dir['dirs'][subdir]
 
 	contents = working_dir['files'][file]
- 
-	print(contents)
 		
 	if table[fd]["pos"] > len(contents):
-		contents+=("\0"*(table[fd]["pos"]-len(contents)))
+		contents+=(b'\0'*(table[fd]["pos"]-len(contents)))
 
-	contents+=buff
+	if table[fd]["mode"] == M_WRONLY and type(buff) is str:
+		contents+=buff.encode()
+	elif table[fd]["mode"] == M_WBYTES and type(buff) is bytes:
+		contents+=buff
+	else:
+		return {
+			"code" : 6,
+			"value" : "Invalid mode or tried to write unsupported type"
+		}
 
 	working_dir[file] = contents
 
@@ -228,22 +238,27 @@ def Sys_ReadFile(fd: int, numb: int, proc_id: int):
 			"value" : "Bad file descriptor"
 		}
 
-	if table[fd]["mode"] !=  M_RDONLY:
-		return {
-			"code" : 6,
-			"value" :"Tried to read from a write only fd"
-		}
-
 	pos = table[fd]["pos"]
 
 	table[fd]["pos"] = pos+numb
 
 	_WriteDescriptorTable(proc_id, table)
 
-	return {
-		"code" : 2,
-		"value" : table[fd]["contents"][pos:][:numb]
-	}
+	if table[fd]["mode"] ==  M_RDONLY:
+		return {
+			"code" : 2,
+			"value" : table[fd]["contents"].decode()[pos:numb]
+		}
+	elif table[fd]["mode"] == M_RBYTES:
+		return {
+			"code" : 2,
+			"value" : table[fd]["contents"][pos:numb]
+		}
+	else:
+		return {
+			"code" : 6,
+			"value" :"Tried to read from a write only fd"
+		}
 	
 def Sys_SeekFile(fd: int, offset: int, whence: int, proc_id: int):
 	table = _GetDescriptorTable(proc_id)
@@ -391,7 +406,8 @@ def AllocateWindow(caller_id: int, x: int, y: int, id: str):
 			'x': x,
 			'y': y,
 			"surface": surface,
-			"rect": rect
+			"rect": rect,
+			"vars": {}
 		}
 	)
 
@@ -420,7 +436,7 @@ def Window_EvalExpr(caller_id: int, id: str, expr: str):
 		if win["id"] == id:
 			surface = win["surface"]
 			try:
-				res = eval(expr, { "window": surface, "pygame": pygame })
+				res = eval(expr, { "window": surface, "pygame": pygame, **win["vars"] })
 			except Exception as e:
 				return {
 					"code": 6,
@@ -430,6 +446,29 @@ def Window_EvalExpr(caller_id: int, id: str, expr: str):
 			return {
 				"code": 1,
 				"value": dill.dumps(res)
+			}
+
+	return {
+		"code": 5,
+		"value": f"No window found with id '{id}'!"
+	}
+
+def Window_StoreVariable(caller_id: int, id: str, name: str, expr: str):
+	for win in procs[caller_id]["windows"]:
+		if win["id"] == id:
+			try:
+				res = eval(expr, { "window": win["surface"], "pygame": pygame, **win["vars"] })
+			except Exception as e:
+				return {
+					"code": 6,
+					"value": str(e)
+				}
+
+			win["vars"][name] = res
+
+			return {
+				"code": 1,
+				"value": f"{name}={res!r}"
 			}
 
 	return {
@@ -552,9 +591,14 @@ def fulfill_reqests():
 		elif req == "Window.EvalExpr":
 			with open(f"{directory}/response.fakeos", 'w') as f:
 				json.dump(
-					Window_EvalExpr(
-						caller_id, **data
-					),
+					Window_EvalExpr(caller_id, **data),
+					f
+				)
+		
+		elif req == "Window.StoreVariable":
+			with open(f"{directory}/response.fakeos", 'w') as f:
+				json.dump(
+					Window_StoreVariable(caller_id, **data),
 					f
 				)
 

@@ -13,6 +13,7 @@ del (
 )
 
 ColorType = Union[tuple[int, int, int], str]
+Coordinate = tuple[int, int]
 
 pygame.init() # for font and other libraries
 
@@ -68,18 +69,43 @@ class Window:
 			resp["value"]
 		)
 
+	def StoreSystemSideVariable(self, name: str, expr: str):
+		resp = WriteRequest(
+			{
+				"type": "Window.StoreVariable",
+				"data": {
+					"name": name,
+					"expr": expr,
+					"id": self.id
+				}
+			}
+		)
+
+		if resp["code"] != 1: raise SystemError(resp["value"])
+
+		return resp
+
+
 	def AddText(
 		self, 
 		text: str, x: int, y: int, size: int, 
 		color: ColorType="black", 
 		font: str="Arial", antialias: bool=False,
 		background: ColorType=None
-		):
-		
+	):	
 		return self.WindowEval(
 			f"window.blit(pygame.font.SysFont('{font}', {size})"
 			f".render('{text}', {antialias}, {repr(color)}, {repr(background)}), ({x}, {y}))"
 		)
+
+	def CreateSurface(self, name: str, *args: list[str]):
+		"""Args must be a string of evaluatable expressions"""
+		return self.StoreSystemSideVariable(
+			name, ""f"pygame.Surface({', '.join(*args)})"
+		)
+
+	def BlitSurface(self, name: str):
+		return self.WindowEval(f"window.blit({name})")
 
 
 	def __del__(self):

@@ -1,3 +1,0 @@
-_SYSTEM_INIT_OVERRIDE_PROC_ID = 0
-import System.Process
-System.Process.Kill(int(System.ARGV[1]))
