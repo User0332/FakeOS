@@ -10,13 +10,16 @@ import req # for procs variable
 import os
 import time as t
 import traceback as trace
-import datetime as date
 from ctypes import windll
 from System.PyDict import loads
 from fakeos_utils import (
 	valid_chars,
 	read_file,
-	write_file
+	write_file,
+	exec_update,
+	exec_event_handler,
+	hash_algorithms,
+	log
 )
 from req import (
 	fulfill_reqests,
@@ -42,24 +45,18 @@ MAX_X, MAX_Y = user32.GetSystemMetrics(0), user32.GetSystemMetrics(1)
 
 SYSTEM_CONF = {}
 
-def log(data: str):
-	with open("./sys.log", 'a') as f:
-		f.write(
-			f"{date.datetime.now()} - {data}\n"
-		)
-
 def sysconf_load(): # load all config data of the system
 	try:
 		PASSWDS: dict[str, str] = loads(read_file("/cfg/users/passwds"))
 		if "root" not in PASSWDS: raise SyntaxError()
 	except SyntaxError:
-		print(
+		log(
 			"Fatal Error: configuration file "
 			"'/cfg/users/passwds' is not in the right format! "
-			"Defaulting to { 'root' : 0 }"
+			"Defaulting to { 'root' : '' }"
 		)
 
-		PASSWDS = { "root": 0 }
+		PASSWDS = { "root": "cf83e1357eefb8bdf1542850d66d8007d620e4050b5715dc83f4a921d36ce9ce47d0d13c5d85f2b0ff8318d2877eec2f63b931bd47417a81a538327af927da3e" }
 		input("Enter to continue... ")
 
 	try:
@@ -73,23 +70,26 @@ def sysconf_load(): # load all config data of the system
 			(type(PASSWD_CONFIG.get("min_length")) is int) and
 			(
 				PASSWD_CONFIG.get("store_method") in
-				("pyhash-common",) # add more possibilites later??? maybe
+				("sha512",) # add more possibilites later??? maybe
+				# to change hash algorithm, verify the user's passwd and then take
+				# the raw input to hash with the new algorithm
+				# ALSO CHG the above `in` check to `method in hash_algorithms.keys()`
 			)
 		)
 
 		if not all_keys_valid: raise SyntaxError()
 	except SyntaxError:
-		print(
+		log(
 			"Fatal Error: configuration file "
 			"'/cfg/security/passwd' is not in the right format! "
-			" Defaulting to {'max_days' : 30, 'min_days' : 0, 'min_length' : 6, 'store_method' : 'str'}"
+			" Defaulting to {'max_days' : 30, 'min_days' : 0, 'min_length' : 6, 'store_method' : 'fakehash-common'}"
 		)
 
 		PASSWD_CONFIG = {
 			"max_days": 30, 
 			"min_days": 0, 
 			"min_length": 6, 
-			"store_method" : "pyhash-common"
+			"store_method" : "sha512"
 		}
 
 	SYSTEM_CONF["PASSWDS"] = PASSWDS
@@ -100,7 +100,7 @@ middle = (MAX_X/2, MAX_Y/2)
 screen = pygame.display.set_mode((MAX_X, MAX_Y))
 pygame.display.set_caption("User0332's FakeOS")
 
-arial = pygame.font.SysFont("Arial", 35)
+console = pygame.font.SysFont("Lucida Console", 35)
 
 fakeos_icon = pygame.image.load("assets/background.png")
 pygame.display.set_icon(fakeos_icon)
@@ -114,7 +114,7 @@ os.system("cls" if os.name == "nt" else "clear")
 
 while running:
 	screen.fill("black")
-	display_terminal_text(user_input_text, (0, 0), screen, arial)
+	display_terminal_text(user_input_text, (0, 0), screen, console)
 
 	for event in pygame.event.get():
 		if event.type == pygame.QUIT:
@@ -132,7 +132,7 @@ while running:
 
 					user_input_text = "Searching for required windows directories..."
 
-					display_terminal_text(user_input_text, (0, 0), screen, arial)
+					display_terminal_text(user_input_text, (0, 0), screen, console)
 					t.sleep(0.1)
 
 					windirokay = (
@@ -144,18 +144,18 @@ while running:
 
 					if windirokay:
 						user_input_text = "[ OK ] Critical Windows directories intact"
-						display_terminal_text(user_input_text, (0, 40), screen, arial)
+						display_terminal_text(user_input_text, (0, 40), screen, console)
 						t.sleep(1)
 					else:
 						user_input_text = "[ FAIL ] Critical Windows directories missing"
-						display_terminal_text(user_input_text, (0, 40), screen, arial)
+						display_terminal_text(user_input_text, (0, 40), screen, console)
 						t.sleep(1)
 						user_input_text = "> "				
 						continue
 
 					user_input_text = "Initializing System API..."
 
-					display_terminal_text(user_input_text, (0, 80), screen, arial)
+					display_terminal_text(user_input_text, (0, 80), screen, console)
 					t.sleep(0.1)
 
 					try:
@@ -166,13 +166,13 @@ while running:
 						log(f"{type(e).__name__}: {e}, trace: {trace.format_exc()}")
 						continue
 					finally:
-						display_terminal_text(user_input_text, (0, 120), screen, arial)
+						display_terminal_text(user_input_text, (0, 120), screen, console)
 						t.sleep(1)
 						user_input_text = "> "
 
 					user_input_text = "Loading System Configurations"
 
-					display_terminal_text(user_input_text, (0, 160), screen, arial)
+					display_terminal_text(user_input_text, (0, 160), screen, console)
 					t.sleep(0.1)
 
 					try:
@@ -183,7 +183,7 @@ while running:
 						log(f"{type(e).__name__}: {e}, trace: {trace.format_exc()}")
 						continue
 					finally:
-						display_terminal_text(user_input_text, (0, 200), screen, arial)
+						display_terminal_text(user_input_text, (0, 200), screen, console)
 						t.sleep(1)
 						user_input_text = "> "
 
@@ -194,13 +194,13 @@ while running:
 
 # SYS PROC
 
-prompt = "ROOT PASSWD> "
+prompt = "passwd (root) => "
 input_passwd = ""
 get_passwd = True
 
 user_input_text = "[ OK ] Sys Proc Launched"
 
-display_terminal_text(user_input_text, (0, 240), screen, arial)
+display_terminal_text(user_input_text, (0, 240), screen, console)
 
 t.sleep(0.5)
 
@@ -218,46 +218,68 @@ while get_passwd:
 			elif event.key == pygame.K_RETURN:
 				# implement check for hashing type later when new
 				# hash types are acutally introduced
-				if hash(input_passwd) == SYSTEM_CONF["PASSWDS"]["root"]:
+				if (
+					hash_algorithms[
+						SYSTEM_CONF["PASSWD_CONF"]["store_method"]
+					]
+					(input_passwd) == SYSTEM_CONF["PASSWDS"]["root"]
+				):
 					input_passwd = ""
 					get_passwd = False
-
 				else:
 					input_passwd = ""
 					prompt = "ROOT PASSWD> "
 
 
 	screen.fill("black")		
-	display_terminal_text(prompt+("*"*len(input_passwd)), (0, 0), screen, arial)
+	display_terminal_text(prompt+("*"*len(input_passwd)), (0, 0), screen, console)
 
 	pygame.display.update()
 
-prompt = "root@fakeos:~$ "
+log("NORMAL-ON-LAUNCH: running base semi-kernel program launch => run sysui or terminal to use a dist of FakeOS")
+
+prompt = "root@fakeos$ "
 cmd_locals = {}
 cmd_globals = {}
 input_cmd = ""
 result = ""
+moving_win = None
 selected_win = None
 
 while True:
-	for event in pygame.event.get():
+	events = pygame.event.get()
+
+	for event in events:
 		if event.type == pygame.QUIT:
 			pygame.quit()
 			exit(0)
 		if event.type == pygame.MOUSEBUTTONDOWN:
+			mousepos = pygame.mouse.get_pos()
+
+			found = False
 			for proc in req.procs.values():
 				for win in proc["windows"]:
-					if win["rect"].collidepoint(*pygame.mouse.get_pos()):
+					if win["rect"].collidepoint(mousepos):
+						moving_win = win
 						selected_win = win
-		if event.type == pygame.MOUSEBUTTONUP and selected_win:
-			selected_win = None
+
+						found = True
+
+			if not found: selected_win = None # if no window was hit, no window was selected
+		
+		if event.type == pygame.MOUSEBUTTONUP:
+			moving_win = None # window released from mouse
 		if event.type == pygame.KEYDOWN:
+			# have selected window handle its own input
+			if selected_win: continue
+
 			char = event.unicode
 			if char in valid_chars:
 				input_cmd+=char
 			elif event.key == pygame.K_BACKSPACE:
 				input_cmd = input_cmd[:-1]
 			elif event.key == pygame.K_RETURN:
+				# if no command was entered, do nothing
 				if not input_cmd: continue
 				
 				args = input_cmd.split()
@@ -268,13 +290,16 @@ while True:
 					pygame.quit()
 					exit(0)
 
-				InitProcess( # Kernel-level function (req.InitProcess), 
-					name,    # not System.Process.InitProcess
+				res = InitProcess(
+					name,
 					args,
 					max(req.procs)+1,
 					0,
 					req.procs[0]
 				)
+				
+				if res["code"] != 2: # process could not be initialized
+					log(f"kernel shell err: {res['value']} (failed on '{name}')")
 
 				result = ""
 				input_cmd = ""
@@ -283,16 +308,25 @@ while True:
 
 	screen.fill("black")
 
-	display_terminal_text(prompt+input_cmd, (0, 0), screen, arial, update=False)
-	display_terminal_text(result, (0, 40), screen, arial, update=False)
+	display_terminal_text(prompt+input_cmd, (0, 0), screen, console, update=False)
+	display_terminal_text(result, (0, 40), screen, console, update=False)
+
+	if moving_win:
+		moving_win["rect"] = \
+			moving_win["surface"].get_rect(
+				center=pygame.mouse.get_pos()
+			)
 
 	if selected_win:
-		selected_win["rect"] = selected_win["surface"].get_rect(
-			center=pygame.mouse.get_pos()
+		exec_event_handler(
+			selected_win,
+			events
 		)
 
 	for proc in req.procs.values():
 		for window in proc["windows"]:
+			exec_update(window)
+
 			screen.blit(
 				window["surface"],
 				window["rect"]

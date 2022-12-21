@@ -1,0 +1,26 @@
+2022-12-21 17:03:01.335422 - NORMAL-ON-LAUNCH: running base semi-kernel program launch => run sysui or terminal to use a dist of FakeOS
+2022-12-21 17:06:11.974197 - NORMAL-ON-LAUNCH: running base semi-kernel program launch => run sysui or terminal to use a dist of FakeOS
+2022-12-21 17:06:43.162081 - NORMAL-ON-LAUNCH: running base semi-kernel program launch => run sysui or terminal to use a dist of FakeOS
+2022-12-21 17:08:37.814214 - NORMAL-ON-LAUNCH: running base semi-kernel program launch => run sysui or terminal to use a dist of FakeOS
+2022-12-21 17:09:53.952254 - NORMAL-ON-LAUNCH: running base semi-kernel program launch => run sysui or terminal to use a dist of FakeOS
+2022-12-21 17:10:36.561898 - NORMAL-ON-LAUNCH: running base semi-kernel program launch => run sysui or terminal to use a dist of FakeOS
+2022-12-21 17:14:33.037975 - NORMAL-ON-LAUNCH: running base semi-kernel program launch => run sysui or terminal to use a dist of FakeOS
+2022-12-21 17:15:38.816426 - NORMAL-ON-LAUNCH: running base semi-kernel program launch => run sysui or terminal to use a dist of FakeOS
+2022-12-21 17:16:03.798705 - kernel shell err: execuable not found in PATH (failed on 'asdja')
+2022-12-21 17:18:34.662966 - NORMAL-ON-LAUNCH: running base semi-kernel program launch => run sysui or terminal to use a dist of FakeOS
+2022-12-21 17:18:58.616615 - 
+2022-12-21 17:19:16.723802 - NORMAL-ON-LAUNCH: running base semi-kernel program launch => run sysui or terminal to use a dist of FakeOS
+2022-12-21 17:19:43.720469 - NORMAL-ON-LAUNCH: running base semi-kernel program launch => run sysui or terminal to use a dist of FakeOS
+2022-12-21 17:21:18.514595 - NORMAL-ON-LAUNCH: running base semi-kernel program launch => run sysui or terminal to use a dist of FakeOS
+2022-12-21 17:21:26.418555 - kernel shell err: execuable not found in PATH (failed on 'sdajsd')
+2022-12-21 17:21:27.988459 - kernel shell err: execuable not found in PATH (failed on 'echoinpu')
+2022-12-21 17:22:38.179542 - NORMAL-ON-LAUNCH: running base semi-kernel program launch => run sysui or terminal to use a dist of FakeOS
+2022-12-21 17:22:42.305795 - kernel shell err: execuable not found in PATH (failed on 'echoinout')
+2022-12-21 17:22:44.425427 - kernel shell err: execuable not found in PATH (failed on 'echoinpout')
+2022-12-21 17:23:38.891147 - NORMAL-ON-LAUNCH: running base semi-kernel program launch => run sysui or terminal to use a dist of FakeOS
+2022-12-21 17:24:09.810748 - kernel shell err: execuable not found in PATH (failed on 'boot')
+2022-12-21 17:26:02.794391 - NORMAL-ON-LAUNCH: running base semi-kernel program launch => run sysui or terminal to use a dist of FakeOS
+2022-12-21 17:34:02.095459 - NORMAL-ON-LAUNCH: running base semi-kernel program launch => run sysui or terminal to use a dist of FakeOS
+2022-12-21 17:42:43.984468 - NORMAL-ON-LAUNCH: running base semi-kernel program launch => run sysui or terminal to use a dist of FakeOS
+2022-12-21 17:46:24.592827 - NORMAL-ON-LAUNCH: running base semi-kernel program launch => run sysui or terminal to use a dist of FakeOS
+2022-12-21 17:46:56.961680 - kernel shell err: execuable not found in PATH (failed on 'echo')

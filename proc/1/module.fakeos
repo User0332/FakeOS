@@ -1,0 +1,12 @@
+import time
+import System.IO
+
+Console = System.IO.Console(400, 200)
+
+Console.Write("Type Some Input: ")
+input = Console.ReadLine()
+time.sleep(1)
+Console.WriteLine(f"You typed: {input!r}")
+
+time.sleep(10)
+System.Exit(0)

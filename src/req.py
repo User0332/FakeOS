@@ -18,7 +18,7 @@ import pygame
 import dill
 import sys
 from typing import TypedDict, Union
-from types import ModuleType
+from types import ModuleType, FunctionType
 import System.PyDict as json
 from System.Machine.FakeOS import (
 	_ParseDirectory, 
@@ -51,7 +51,10 @@ class WindowType(TypedDict):
 	y: int
 	surface: pygame.Surface
 	rect: pygame.Rect
+	closerect: pygame.Rect
 	vars: dict[str]
+	update: FunctionType
+	event_handler: FunctionType
 
 class ProcType(TypedDict):
 	name: str
@@ -398,6 +401,11 @@ def AllocateWindow(caller_id: int, x: int, y: int, id: str):
 	surface = pygame.Surface((x, y))
 	rect = surface.get_rect(topleft=(0, 0))
 
+	close = pygame.image.load("assets/close.png")
+	closerect = close.get_rect(topright=(x, 0))
+
+	surface.blit(close, closerect)
+
 	surface.fill("white")
 
 	procs[caller_id]["windows"].append(
@@ -407,7 +415,8 @@ def AllocateWindow(caller_id: int, x: int, y: int, id: str):
 			'y': y,
 			"surface": surface,
 			"rect": rect,
-			"vars": {}
+			"vars": {},
+			"update": None
 		}
 	)
 
@@ -419,6 +428,8 @@ def AllocateWindow(caller_id: int, x: int, y: int, id: str):
 def DeAllocateWindow(caller_id: int, id: str):
 	for win in procs[caller_id]["windows"]:
 		if win["id"] == id:
+			try: exec(win["handlers"]["OnClose"])
+			except BaseException: pass
 			
 			procs[caller_id]["windows"].remove(win)
 			return {
@@ -469,6 +480,36 @@ def Window_StoreVariable(caller_id: int, id: str, name: str, expr: str):
 			return {
 				"code": 1,
 				"value": f"{name}={res!r}"
+			}
+
+	return {
+		"code": 5,
+		"value": f"No window found with id '{id}'!"
+	}
+
+def Window_AttachUpdateFunction(caller_id: int, id: str, func: bytes):
+	for win in procs[caller_id]["windows"]:
+		if win["id"] == id:
+			win["update"] = dill.loads(func)
+			
+			return {
+				"code": 1,
+				"value": "Update function sucessfully attached."
+			}
+
+	return {
+		"code": 5,
+		"value": f"No window found with id '{id}'!"
+	}
+
+def Window_AttachEventHandler(caller_id: int, id: str, func: bytes):
+	for win in procs[caller_id]["windows"]:
+		if win["id"] == id:
+			win["event_handler"] = dill.loads(func)
+			
+			return {
+				"code": 1,
+				"value": "Event handler function sucessfully attached."
 			}
 
 	return {
@@ -599,6 +640,18 @@ def fulfill_reqests():
 			with open(f"{directory}/response.fakeos", 'w') as f:
 				json.dump(
 					Window_StoreVariable(caller_id, **data),
+					f
+				)
+		elif req == "Window.AttachUpdateFunction":
+			with open(f"{directory}/response.fakeos", 'w') as f:
+				json.dump(
+					Window_AttachUpdateFunction(caller_id, **data),
+					f
+				)
+		elif req == "Window.AttachEventHandler":
+			with open(f"{directory}/response.fakeos", 'w') as f:
+				json.dump(
+					Window_AttachEventHandler(caller_id, **data),
 					f
 				)
 

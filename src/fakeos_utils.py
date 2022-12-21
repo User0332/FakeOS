@@ -1,13 +1,73 @@
+import pygame
+import dill
+import hashlib
+import datetime as date
 from System.IO import M_RDONLY, M_WRONLY
 from System.Locals import SYS_RESP
 from System.Machine.FakeOS import Stat
-import pygame
+from types import FunctionType
 from req import (
 	Sys_Close,
 	Sys_OpenFile, 
 	Sys_ReadFile,
-	Sys_WriteFile
+	Sys_WriteFile,
+	DeAllocateWindow,
+	Window_AttachUpdateFunction,
+	Window_AttachEventHandler,
+	WindowType
 )
+
+hash_algorithms = {
+	"sha512": lambda s: hashlib.sha512(s.encode()).hexdigest(),
+	"sha256": lambda s: hashlib.sha256(s.encode()).hexdigest(),
+	"sha224": lambda s: hashlib.sha224(s.encode()).hexdigest()
+}
+
+def log(data: str):
+	fmtd = f"{date.datetime.now()} - {data}\n"
+
+	print(fmtd)
+
+	with open("./sys.log", 'a') as f:
+		f.write(fmtd)
+
+def exec_update(win: WindowType):
+	func = win["update"]
+	id = win["id"]
+
+	if not isinstance(func, FunctionType): return
+
+	try: func(
+		pygame,
+		_get_win_funcs(id),
+		win["vars"], # pass direct ref so vars can be modified
+		win["surface"],
+		win["rect"]
+	)
+	except BaseException as e: log(e)
+
+def exec_event_handler(win: WindowType, events: list[pygame.event.Event]):
+	func = win["event_handler"]
+	id = win["id"]
+
+	if not isinstance(func, FunctionType): return
+
+	try: func(
+		pygame,
+		events,
+		_get_win_funcs(id),
+		win["vars"], # pass direct ref so vars can be modified
+		win["surface"],
+		win["rect"]
+	)
+	except BaseException as e: log(e)
+
+def _get_win_funcs(id):
+	return {
+		"close": lambda: DeAllocateWindow(0, id),
+		"chgupdate": lambda func: Window_AttachUpdateFunction(0, id, dill.dumps(func)),
+		"chghandler": lambda func: Window_AttachEventHandler(0, id, dill.dumps(func))
+	}
 
 
 def read_file(fname: str) -> str:

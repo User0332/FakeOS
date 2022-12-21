@@ -1,6 +1,7 @@
-from .Locals import *
-from .PyDict import load, loads, dumps
-from .Machine.FakeOS import AwaitSystemResponse, GetCwd, SystemError
+from .Console import Console
+from ..Locals import *
+from ..PyDict import load, loads, dumps
+from ..Machine.FakeOS import AwaitSystemResponse, GetCwd, SystemError
 
 M_RDONLY = 0
 M_WRONLY = 1
@@ -79,9 +80,7 @@ class File:
 	def __del__(self) -> None:
 		if hasattr(self, '_fd'):
 			self.Close()
-		
-				
-	
+
 
 def OpenFile(filename: str, mode: int) -> SYS_RESP:
 	with open(REQUEST_FILE, 'w') as f:

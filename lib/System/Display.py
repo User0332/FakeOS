@@ -12,8 +12,17 @@ del (
 	unittest
 )
 
+
+
 ColorType = Union[tuple[int, int, int], str]
 Coordinate = tuple[int, int]
+
+_EVENT_HANDLERS = [
+	"OnMouseClick",
+	"OnKeyDown",
+	"OnClose",
+	# add more here later
+]
 
 pygame.init() # for font and other libraries
 
@@ -69,7 +78,7 @@ class Window:
 			resp["value"]
 		)
 
-	def StoreSystemSideVariable(self, name: str, expr: str):
+	def StoreSystemSideVariable(self, name: str, expr: str) -> str:
 		resp = WriteRequest(
 			{
 				"type": "Window.StoreVariable",
@@ -83,7 +92,7 @@ class Window:
 
 		if resp["code"] != 1: raise SystemError(resp["value"])
 
-		return resp
+		return resp["value"]
 
 
 	def AddText(
@@ -107,6 +116,81 @@ class Window:
 	def BlitSurface(self, name: str):
 		return self.WindowEval(f"window.blit({name})")
 
+	def DefineUpdateFunction(self, update: FunctionType):
+		"""
+		Receives a function 'update' ->
+		```py
+		(
+			pygame: Module[pygame], 
+			window_functions: {
+				"close": () -> SYS_RESP,
+				"chgupdate": (update: UpdateFunctionType) -> SYS_RESP
+			},
+			win_vars: dict[str, Any], # can be modified
+			surface: pygame.Surface # your window surface
+			rect: pygame.Rect[surface]
+		) -> None,
+		```
+
+		NOTE: This function will be serialized and rebuilt by sys on the other
+		side, so global variable references cannot be used and will not work.
+		"""
+
+		resp = WriteRequest(
+			{
+				"type": "Window.AttachUpdateFunction",
+				"data": {
+					"func": dill.dumps(update),
+					"id": self.id
+				}
+			}
+		)
+
+		if resp["code"] != 1: raise SystemError(resp["value"])
+
+	def AttachEventHandlerFunction(self, handler: FunctionType):
+		"""
+		Triggered every frame with `pygame.event.get()` if the current window is selected.
+		
+		Receives a function 'handler' ->
+		```py
+		(
+			pygame: Module[pygame],
+			events: list[pygame.event.Event]
+			window_functions: {
+				"evalexpr": (expr: str) -> SYS_RESP
+				"close": () -> SYS_RESP,
+				"storevar": (name: str, expr: str) -> SYS_RESP,
+				"chgupdate": (update: UpdateFunctionType) -> SYS_RESP
+			},
+			win_vars: dict[str, Any], # can be modified
+			surface: pygame.Surface # your window surface
+			rect: pygame.Rect[surface]
+		) -> None,
+		```
+
+		NOTE: This function will be serialized and rebuilt by sys on the other
+		side, so references to non-serializable objects (like `pygame.Surface()`)
+		defined outside the function will not work.
+		"""
+
+		resp = WriteRequest(
+			{
+				"type": "Window.AttachEventHandler",
+				"data": {
+					"func": dill.dumps(handler),
+					"id": self.id
+				}
+			}
+		)
+
+		if resp["code"] != 1: raise SystemError(resp["value"])
+
+	def OutlineBorder(self, color="black", size: int=1):
+			self.WindowEval(
+				f"window.fill({repr(color)},"
+				f"window.get_rect().inflate(-{size}, -{size}))"
+			)
 
 	def __del__(self):
 		self.Delete()
