@@ -15,7 +15,7 @@ A simulation of an operating system/VM made in Python 3.9
 
 **`src/`** - Source of the fake kernel
 
-**`lib/System/`** - This is the folder that holds the System API, adding {fakeos-directory}/lib/ to PYTHONPATH will allow the OS to run and will allow you to import and use the System API
+**`lib/System/`** - This is the folder that holds the System API, adding `{fakeos-directory}/lib/` to the `PYTHONPATH` environment variable will allow the OS to run and will allow you to import and use the System API
 
 **`proc/`** - Windows filesystem holding process information, each folder number represents a process id
 
