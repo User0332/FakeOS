@@ -7,17 +7,17 @@ A simulation of an operating system/VM made in Python 3.9
 
 ## General Info About Files
 
-**.fakeos files** - These files are used and maintained by the system, they should not be modified unless you are aware of their effects
+**`.fakeos` files** - These files are used and maintained by the system, they should not be modified unless you are aware of their effects
 
-(**filesystem/files.py** - This file contains the filesystem in a JSON-like format, here files can be created and manipulated outside of the system
+**`filesystem/files.py`** - This file contains the filesystem in a JSON-like format, here files can be created and manipulated outside of the system
 
-**assets/** - General items to be used with pygame
+**`assets/`** - General items to be used with pygame
 
-**src/** - Source of the fake kernel
+**`src/`** - Source of the fake kernel
 
-**lib/System/** - This is the folder that holds the System API, adding {fakeos-directory}/lib/ to PYTHONPATH will allow the OS to run and will allow you to import and use the System API
+**`lib/System/`** - This is the folder that holds the System API, adding `{fakeos-directory}/lib/` to the `PYTHONPATH` environment variable will allow the OS to run and will allow you to import and use the System API
 
-**proc/** - Windows filesystem holding process information, each folder number represents a process id
+**`proc/`** - Windows filesystem holding process information, each folder number represents a process id
 
 <br/>
 <br/>
