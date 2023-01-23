@@ -1,5 +1,10 @@
 import textwrap
+import time
 from System import Display
+from .Standard import (
+	stdin, stdout, stderr, 
+	M_RDONLY, M_WRONLY
+)
 
 pygame = Display.pygame
 
@@ -15,13 +20,13 @@ class Console:
 		scroll_mod = (font_size//2)
 
 		self._inner.StoreSystemSideVariable("font", f"pygame.font.SysFont('Lucida Console', {font_size})")
-		self.font = pygame.font.SysFont("Lucida Console", y//10)
 
+		
 		def handle_events(
 			pygame: pygame,
 			events: list[pygame.event.Event],
 			win_funcs: dict[str, Display.FunctionType],
-			win_vars: dict[str, Display.Union[str, pygame.font.Font]],
+			win_vars: dict[str, Display.Union[str, pygame.font.Font, Display.FunctionType]],
 			surface: pygame.Surface,
 			rect: pygame.Rect
 		):
@@ -30,6 +35,8 @@ class Console:
 					key: str = event.unicode
 
 					win_vars["stdin_buff"]+=key
+					stdin.Write(win_vars["stdin_buff"], M_WRONLY)
+					print()
 				elif event.type == pygame.MOUSEWHEEL:
 					win_vars["scroll_y"]+=(event.y*scroll_mod)
 
@@ -128,19 +135,28 @@ class Console:
 	def Write(self, string: str):
 		self._text+=string
 
+		stdout.Write(self._text)
+
+		if string[-1] in ('\r', '\n'): self.Flush() # autoflush
+
 	def WriteLine(self, string: str):
 		self._text+=string+'\r'
+
+		stdout.Write(self._text)
+
 		self.Flush()
 
 	def GetChar(self) -> str:
 		self.Flush() # make sure all output is printed before proceeding
 
 		# wait until something is actually pushed to the input buff
-		while not self._inner.WindowEval("stdin_buff"): pass
+		while not self._inner.WindowEval("stdin_buff"):	time.sleep(0.05) # don't request things too fast
 
 		# read and remove char from input buffer
 		char = self._inner.WindowEval("stdin_buff[0]")
 		self._inner.StoreSystemSideVariable("stdin_buff", "stdin_buff[1:]")
+
+		stdin.Write(self._inner.WindowEval("stdin_buff"), M_WRONLY)
 
 		return char
 

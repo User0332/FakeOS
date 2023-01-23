@@ -6,12 +6,10 @@ import unittest.mock
 import contextlib
 with contextlib.redirect_stdout(unittest.mock.Mock()):
 	import pygame
-import req # for procs variable
 import os
 import time as t
 import traceback as trace
 from ctypes import windll
-from System.PyDict import loads
 from fakeos_utils import (
 	valid_chars,
 	read_file,
@@ -21,10 +19,15 @@ from fakeos_utils import (
 	hash_algorithms,
 	log
 )
+import req # for procs variable
 from req import (
 	fulfill_reqests,
-	InitProcess
+	InitProcess,
+	KillProcess
 )
+
+from System.PyDict import loads
+
 
 user32 = windll.user32
 
@@ -188,6 +191,10 @@ while running:
 						user_input_text = "> "
 
 					running = False
+				
+				if user_input_text == "> exit":
+					pygame.quit()
+					exit(0)
 
 				user_input_text = "> "
 
@@ -198,9 +205,7 @@ prompt = "passwd (root) => "
 input_passwd = ""
 get_passwd = True
 
-user_input_text = "[ OK ] Sys Proc Launched"
-
-display_terminal_text(user_input_text, (0, 240), screen, console)
+display_terminal_text("[ OK ] Sys Proc Launched", (0, 240), screen, console)
 
 t.sleep(0.5)
 
@@ -228,7 +233,7 @@ while get_passwd:
 					get_passwd = False
 				else:
 					input_passwd = ""
-					prompt = "ROOT PASSWD> "
+					prompt = "passwd (root) => "
 
 
 	screen.fill("black")		
@@ -245,6 +250,7 @@ input_cmd = ""
 result = ""
 moving_win = None
 selected_win = None
+selected_win_proc_id = 0
 
 while True:
 	events = pygame.event.get()
@@ -257,11 +263,12 @@ while True:
 			mousepos = pygame.mouse.get_pos()
 
 			found = False
-			for proc in req.procs.values():
+			for proc_id, proc in req.procs.items():
 				for win in proc["windows"]:
 					if win["rect"].collidepoint(mousepos):
 						moving_win = win
 						selected_win = win
+						selected_win_proc_id = proc_id
 
 						found = True
 
@@ -286,16 +293,23 @@ while True:
 				name = args[0]
 				args = [] if len(args) < 2 else args[1:]
 
-				if name == "exit": 
+				if name == "exit":
+					# kill all procs still running
+					for proc in tuple(req.procs.keys()):
+						if proc: KillProcess(0, proc) # don't kill sys proc
+
 					pygame.quit()
 					exit(0)
+
+				proc_id = max(req.procs)+1
 
 				res = InitProcess(
 					name,
 					args,
-					max(req.procs)+1,
+					proc_id,
 					0,
-					req.procs[0]
+					req.procs[0]["name"],
+					f"['/proc/{proc_id}/stdin', '/proc/{proc_id}/stdout', '/proc/{proc_id}/stderr']"
 				)
 				
 				if res["code"] != 2: # process could not be initialized
@@ -319,19 +333,18 @@ while True:
 
 	if selected_win:
 		exec_event_handler(
+			selected_win_proc_id,
 			selected_win,
 			events
 		)
 
-	for proc in req.procs.values():
+	for proc_id, proc in req.procs.items():
 		for window in proc["windows"]:
-			exec_update(window)
+			exec_update(window, proc_id)
 
 			screen.blit(
 				window["surface"],
 				window["rect"]
 			)
-
-
 
 	pygame.display.update()

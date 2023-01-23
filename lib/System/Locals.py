@@ -7,21 +7,27 @@ ARGV = argv #for constant recognition
 
 NULL = "System.NULL"
 
-#proc id should be parent directory name
-try: PROC_ID = join(getcwd(), ARGV[0]).replace('\\', '/').split('/')[-2]
-except IndexError: PROC_ID = 0 #if this fails, then the process is sys
+def reload(*, proc_id: int=None):
+	global PROC_ID, PROC_DIR, REQUEST_FILE, RESPONSE_FILE
+	#proc id should be parent directory name
+	try: PROC_ID = join(getcwd(), ARGV[0]).replace('\\', '/').split('/')[-2]
+	except IndexError: PROC_ID = 0 #if this fails, then the process is sys
 
-if hasattr(modules["__main__"], "_SYSTEM_INIT_OVERRIDE_PROC_ID"):
-	#just to be safe in case sys is run from another directory
-	PROC_ID = modules["__main__"]._SYSTEM_INIT_OVERRIDE_PROC_ID
+	if hasattr(modules["__main__"], "_SYSTEM_INIT_OVERRIDE_PROC_ID"):
+		#just to be safe in case sys is run from another directory
+		PROC_ID = modules["__main__"]._SYSTEM_INIT_OVERRIDE_PROC_ID
 
-PROC_ID = int(PROC_ID)
+	if proc_id: PROC_ID = proc_id
 
-PROC_DIR = f"proc/{PROC_ID}"
+	PROC_ID = int(PROC_ID)
 
-REQUEST_FILE = f"{PROC_DIR}/request.fakeos"
+	PROC_DIR = f"proc/{PROC_ID}"
 
-RESPONSE_FILE = f"{PROC_DIR}/response.fakeos"
+	REQUEST_FILE = f"{PROC_DIR}/request.fakeos"
+
+	RESPONSE_FILE = f"{PROC_DIR}/response.fakeos"
+
+reload()
 
 SYSTEM_RESPONSE_CODES = {
 	0 : "Not repsonded",

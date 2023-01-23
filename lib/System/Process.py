@@ -1,6 +1,10 @@
 from .Locals import *
 from .PyDict import dump
-from .Machine.FakeOS import AwaitSystemResponse
+from .Machine.FakeOS import (
+	AwaitSystemResponse, 
+	WriteRequest,
+	SystemError
+)
 from os import listdir
 
 def Kill(proc_id: int) -> SYS_RESP:
@@ -18,21 +22,27 @@ def Kill(proc_id: int) -> SYS_RESP:
 	
 	return AwaitSystemResponse()
 
-def GetRunningProcesses() -> list:
-	return listdir('proc')
+def GetRunningProcesses() -> list[int]:
+	return [
+		int(x) for x in listdir('proc')
+	]
 
-def InitProcess(*args) -> SYS_RESP:
-	with open(REQUEST_FILE, 'w') as f:
-		dump(
-			{
-				"type" : "InitProcess", 
-				"data" : args
-			},
-			f
-		)
+def InitProcess(args: list[str], stdin: str=None, stdout: str=None, stderr: str=None) -> int:
+	resp = WriteRequest(
+		{
+			"type" : "InitProcess", 
+			"data" : {
+				"args": args,
+				"iostreams": [
+					stdin, 
+					stdout, 
+					stderr
+				]
+			}
+		}
+	)
 
-	return AwaitSystemResponse()
+	if resp["code"] != 2:
+		raise SystemError(resp["value"])
 
-def GetProcessFlags(proc_id) -> list:
-	with open(f'proc/{proc_id}/flags.fakeos', 'r') as f:
-		return f.read().splitlines()
+	return resp["value"]

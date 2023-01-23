@@ -27,6 +27,7 @@ from System.Machine.FakeOS import (
 	IsFile,
 	ListFilesInDir,
 	Stat,
+	NormPath,
 	SystemError
 )
 from System.IO import (
@@ -69,8 +70,7 @@ procs: dict[int, ProcType] = {
 	}
 }
 
-
-
+NO_RESP = 257
 IN_USE = []
 
 def GetPath() -> list[str]:
@@ -115,9 +115,56 @@ def _WriteDescriptorTable(proc_id, table: dict[int, DescriptorTableEntry]) -> No
 
 def Sys_OpenFile(filename: str, mode: int, proc_id: int):
 	'''Returns the file descriptor of the specified file'''
+	filename = NormPath(filename)
+
 	path = filename.split('/')
 	directory = '/'.join(path[:-1])
 	file = path[-1]
+
+	table = _GetDescriptorTable(proc_id)
+	fd: int = max(table.keys() if table else (0,))+1
+
+	if directory.startswith("/proc"):
+		actual = filename.removeprefix('/')
+
+		if os.path.isfile(actual):
+			if mode in (M_RDONLY, M_RBYTES):
+				table[fd] = {
+					"mode" : mode,
+					"pos" : 0,
+					"filename" : filename, # for closing
+					"contents" : open(actual, 'r').read()
+				}
+
+				_WriteDescriptorTable(proc_id, table)
+				IN_USE.append(filename)
+
+				return {
+					"code" : 2,
+					"value" : fd
+				}
+
+			elif mode in (M_WRONLY, M_WBYTES):
+				open(actual, 'w').close()
+
+				table[fd] = {
+					"mode" : mode,
+					"filename" : filename,
+					"pos" : 0
+				}
+
+				_WriteDescriptorTable(proc_id, table)
+				IN_USE.append(filename)
+
+				return {
+					"code" : 2,
+					"value" : fd
+				}
+			else:
+				return {
+					"code" : 6,
+					"value" : "Invalid file mode"
+				}
 
 	if not IsFile(filename) and mode in (M_RDONLY, M_RBYTES):
 		return {
@@ -138,13 +185,10 @@ def Sys_OpenFile(filename: str, mode: int, proc_id: int):
 			"code" : 3,
 			"value" : "Another process has opened this file"
 		}
-
-	table = _GetDescriptorTable(proc_id)
-	fd: int = max(table.keys())+1
 	
 	if mode in (M_RDONLY, M_RBYTES):
 		table[fd] = {
-			"mode" : mode, # for compatibility with other read modes in the future
+			"mode" : mode,
 			"pos" : 0,
 			"filename" : filename, # for closing
 			"contents" : dirobj["files"][file]
@@ -167,7 +211,7 @@ def Sys_OpenFile(filename: str, mode: int, proc_id: int):
 		for subdir in directory:
 			working_dir = working_dir['dirs'][subdir]
 
-		working_dir['files'][file] = "" # clear file as if opening new
+		working_dir['files'][file] = b"" # clear file as if opening new
 
 		_SetFileSystemObject(filesystem)
 
@@ -205,18 +249,52 @@ def Sys_WriteFile(fd: int, buff: Union[str, bytes], proc_id: int):
 	directory = (x for x in path.split('/')[:-1] if x)
 	file = path.split('/')[-1]
 
+	if path.startswith("/proc"):
+		try:
+			actual = path.removeprefix('/')
+
+			contents_len = os.path.getsize(actual)
+
+			to_write = b""
+
+			if table[fd]["pos"] > contents_len:
+				to_write = (b'\0'*(table[fd]["pos"]-contents_len))
+
+			if table[fd]["mode"] == M_WRONLY and type(buff) is str:
+				to_write+=buff.encode()
+			elif table[fd]["mode"] == M_WBYTES and type(buff) is bytes:
+				to_write+=buff
+			else:
+				return {
+					"code" : 6,
+					"value" : "Invalid mode or tried to write unsupported type"
+				}
+
+			open(actual, 'wb').write(to_write)
+
+			return {
+				"code": 1,
+				"value": len(to_write)
+			}
+		except FileNotFoundError:
+			return {
+				"code": 6,
+				"value": "The file was removed from the host filesystem"
+			}
+
 	for subdir in directory:
 		working_dir = working_dir['dirs'][subdir]
 
 	contents = working_dir['files'][file]
+	to_add = b""
 		
 	if table[fd]["pos"] > len(contents):
-		contents+=(b'\0'*(table[fd]["pos"]-len(contents)))
+		to_add+=(b'\0'*(table[fd]["pos"]-len(contents)))
 
 	if table[fd]["mode"] == M_WRONLY and type(buff) is str:
-		contents+=buff.encode()
+		contents+=to_add+buff.encode()
 	elif table[fd]["mode"] == M_WBYTES and type(buff) is bytes:
-		contents+=buff
+		contents+=to_add+buff
 	else:
 		return {
 			"code" : 6,
@@ -229,7 +307,7 @@ def Sys_WriteFile(fd: int, buff: Union[str, bytes], proc_id: int):
 
 	return {
 		"code" : 1, 
-		"value" : len(buff)
+		"value" : len(buff)+len(to_add)
 	}
 
 def Sys_ReadFile(fd: int, numb: int, proc_id: int):
@@ -329,7 +407,14 @@ def Sys_Close(fd: int, proc_id: int):
 		"value" : None
 	}
 
-def InitProcess(name: str, args: list, new_id: int, caller_id: int, caller: dict):
+def InitProcess(
+	name: str, 
+	args: list, 
+	new_id: int, 
+	caller_id: int, 
+	caller_name: str, 
+	iostreams: str
+):
 	if not FileIsInPath(name):
 		return {
 			"code" : 5,
@@ -349,34 +434,20 @@ def InitProcess(name: str, args: list, new_id: int, caller_id: int, caller: dict
 
 	open(f"proc/{new_id}/response.fakeos", 'w').close()
 
+	# if the process wants to use these pseudo-files
+	open(f"proc/{new_id}/stdout", 'w').close()
+	open(f"proc/{new_id}/stdin", 'w').close()
+	open(f"proc/{new_id}/stderr", 'w').close()
+	#
+
 	with open(f"proc/{new_id}/name.fakeos", 'w') as f:
 		f.write(name)
 
 	with open(f"proc/{new_id}/parent.fakeos", 'w') as f:
-		f.write(f"{caller_id} {caller['name']}")
+		f.write(f"{caller_id} {caller_name}")
 
 	with open(f"proc/{new_id}/fd/table.py", 'w') as f:
-		json.dump(
-			{
-				0 : {
-					"mode" : M_RDONLY,
-					"pos" : 0,
-					"contents" : "",
-					"filename" : "<stdin>"
-				},
-				1 : {
-					"mode" : M_WRONLY,
-					"pos" : 0,
-					"filename" : "<stdout>"
-				},
-				2 : {
-					"mode" : M_WRONLY,
-					"pos" : 0,
-					"filename" : "<stderr>"
-				}
-			},
-			f
-		)
+		f.write("{}")
 
 	LoadToFile(filename, f"proc/{new_id}/module.fakeos", caller_id)
 
@@ -385,6 +456,9 @@ def InitProcess(name: str, args: list, new_id: int, caller_id: int, caller: dict
 		"module" : subprocess.Popen(["python", f"proc/{new_id}/module.fakeos"]+args),
 		"windows": []
 	}
+
+	# Standard I/O stream buff files
+	open(f"proc/{new_id}/iostreams.fakeos", 'w').write(iostreams)
 
 	return {
 			"code" : 2,
@@ -428,8 +502,6 @@ def AllocateWindow(caller_id: int, x: int, y: int, id: str):
 def DeAllocateWindow(caller_id: int, id: str):
 	for win in procs[caller_id]["windows"]:
 		if win["id"] == id:
-			try: exec(win["handlers"]["OnClose"])
-			except BaseException: pass
 			
 			procs[caller_id]["windows"].remove(win)
 			return {
@@ -464,11 +536,11 @@ def Window_EvalExpr(caller_id: int, id: str, expr: str):
 		"value": f"No window found with id '{id}'!"
 	}
 
-def Window_StoreVariable(caller_id: int, id: str, name: str, expr: str):
+def Window_StoreVariable(caller_id: int, id: str, name: str, expr: str, _globals: dict[str]):
 	for win in procs[caller_id]["windows"]:
 		if win["id"] == id:
 			try:
-				res = eval(expr, { "window": win["surface"], "pygame": pygame, **win["vars"] })
+				res = eval(expr, { "window": win["surface"], "pygame": pygame, **win["vars"], **dill.loads(_globals) })
 			except Exception as e:
 				return {
 					"code": 6,
@@ -517,6 +589,42 @@ def Window_AttachEventHandler(caller_id: int, id: str, func: bytes):
 		"value": f"No window found with id '{id}'!"
 	}
 
+def KillProcess(caller_id: int, id: int):
+	if id in procs:
+		try: procs[id]["module"].kill()
+		except AttributeError: return {
+			"code": 4,
+			"value": "You can't kill sys!"
+
+		} # someone is trying to kill sys?
+
+		del procs[id]
+
+		for file in _GetDescriptorTable(id).values():
+			filename = file["filename"]
+
+			if filename in ("<stdin>", "<stdout>", "<stderr>"):
+				continue #these are fake files
+
+			IN_USE.remove(filename)
+
+		shutil.rmtree(f"proc/{id}")
+
+		if id != caller_id: # if the process didn't kill itself
+			return {
+				"code" : 2,
+				"value" : None
+			}
+		else:
+			return NO_RESP
+
+	return {
+		"code" : 5,
+		"value" : f"Process with {id=} doesn't exist!"
+	}
+
+
+# ?NOTE:?TODO => MAKE ASYNC?
 def fulfill_reqests():
 	for caller_id, caller in list(procs.items()): #use list to create a copy of the dict
 		try:
@@ -526,15 +634,15 @@ def fulfill_reqests():
 		directory = f"proc/{caller_id}"
 
 		with open(f"{directory}/request.fakeos", "r") as f:
-			request  = json.load(f)
+			request = json.load(f)		
 			if not request: continue
-			req = request['type']
-			data = request['data']
+			req = request["type"]
+			data = request["data"]
 
 		if req == "InitProcess":
-			proc_name = data[0]
+			proc_name = data["args"][0]
 			try:
-				args = data[1:]
+				args = data["args"][1:]
 			except IndexError:
 				args = []
 
@@ -542,40 +650,26 @@ def fulfill_reqests():
 
 			with open(f"{directory}/response.fakeos", 'w') as f:
 				json.dump(
-					InitProcess(proc_name, args, new_id, caller_id, caller),
+					InitProcess(
+						proc_name, 
+						args, 
+						new_id, 
+						caller_id, 
+						caller["name"],
+						data["iostreams"]
+					),
 					f
 				)
 	
 		elif req == "KillProcess":
-			if data in procs:
-				try: procs[data]["module"].kill()
-				except AttributeError: continue # someone is trying to kill sys?
-				del procs[data]
+			resp = KillProcess(caller_id, data)
+			if resp is NO_RESP: continue
 
-				for file in _GetDescriptorTable(data).values():
-					filename = file["filename"]
-
-					if filename in ("<stdin>", "<stdout>", "<stderr>"):
-						continue #these are fake files
-
-					IN_USE.remove(filename)
-
-				shutil.rmtree(f"proc/{data}")
-
-				if data != caller_id: # if the process didn't kill itself
-					with open(f"{directory}/response.fakeos", "w") as f:
-						response = {
-							"code" : 2,
-							"value" : None
-						}
-						json.dump(response, f)
-			else:
-				with open(f"{directory}/response.fakeos", "w") as f:
-					response = {
-						"code" : 5,
-						"value" : None
-					}
-					json.dump(response, f)
+			with open(f"{directory}/response.fakeos", 'w') as f:
+				json.dump(
+					resp,
+					f
+				)
 
 		elif req == "Sys.OpenFile":
 			with open(f"{directory}/response.fakeos", 'w') as f:

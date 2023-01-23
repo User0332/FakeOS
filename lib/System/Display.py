@@ -78,14 +78,17 @@ class Window:
 			resp["value"]
 		)
 
-	def StoreSystemSideVariable(self, name: str, expr: str) -> str:
+	def StoreSystemSideVariable(self, name: str, expr: str, names: dict[str]=None) -> str:
+		names = names if names else dict()
+
 		resp = WriteRequest(
 			{
 				"type": "Window.StoreVariable",
 				"data": {
 					"name": name,
 					"expr": expr,
-					"id": self.id
+					"id": self.id,
+					"_globals": dill.dumps(names)
 				}
 			}
 		)

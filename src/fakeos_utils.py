@@ -2,8 +2,8 @@ import pygame
 import dill
 import hashlib
 import datetime as date
+import System.Locals
 from System.IO import M_RDONLY, M_WRONLY
-from System.Locals import SYS_RESP
 from System.Machine.FakeOS import Stat
 from types import FunctionType
 from req import (
@@ -31,36 +31,57 @@ def log(data: str):
 	with open("./sys.log", 'a') as f:
 		f.write(fmtd)
 
-def exec_update(win: WindowType):
+def exec_update(win: WindowType, proc_id: int):
 	func = win["update"]
 	id = win["id"]
 
 	if not isinstance(func, FunctionType): return
 
-	try: func(
-		pygame,
-		_get_win_funcs(id),
-		win["vars"], # pass direct ref so vars can be modified
-		win["surface"],
-		win["rect"]
+	System.Locals.reload(proc_id=proc_id)
+
+	try: exec(
+		"""func(
+			pygame,
+			_get_win_funcs(id),
+			win['vars'],
+			win['surface'],
+			win['rect']
+		)""", {
+			"func": func,
+			"pygame": pygame,
+			"_get_win_funcs": _get_win_funcs,
+			"win": win
+		}
 	)
 	except BaseException as e: log(e)
+	finally: System.Locals.reload()
 
-def exec_event_handler(win: WindowType, events: list[pygame.event.Event]):
+def exec_event_handler(proc_id: int, win: WindowType, events: list[pygame.event.Event]):
 	func = win["event_handler"]
 	id = win["id"]
 
 	if not isinstance(func, FunctionType): return
 
-	try: func(
-		pygame,
-		events,
-		_get_win_funcs(id),
-		win["vars"], # pass direct ref so vars can be modified
-		win["surface"],
-		win["rect"]
+	System.Locals.reload(proc_id=proc_id)
+
+	try: exec(
+		"""func(
+			pygame,
+			events,
+			_get_win_funcs(id),
+			win['vars'],
+			win['surface'],
+			win['rect']
+		)""", {
+			"func": func,
+			"pygame": pygame,
+			"events": events,
+			"_get_win_funcs": _get_win_funcs,
+			"win": win
+		}
 	)
 	except BaseException as e: log(e)
+	finally: System.Locals.reload()
 
 def _get_win_funcs(id):
 	return {
@@ -80,7 +101,7 @@ def read_file(fname: str) -> str:
 
 	return data
 
-def write_file(fname: str, data: str) -> SYS_RESP:
+def write_file(fname: str, data: str) -> System.Locals.SYS_RESP:
 	file = Sys_OpenFile(fname, M_WRONLY, 0)["value"]
 	
 	resp = Sys_WriteFile(file, data, 0)

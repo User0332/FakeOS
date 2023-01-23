@@ -1,6 +1,6 @@
 from ..Locals import *
 from ..PyDict import load, dump
-from os.path import getsize
+from os.path import getsize, normpath as os_norm
 
 class SystemError(Exception): pass
 
@@ -10,7 +10,11 @@ class StatObject:
 		self.path = path
 		self.size = size
 
+# sys env var?
 _CWD = '/' # set this to the directory the process was launched in
+
+def NormPath(path: str) -> str:
+	return os_norm(path).replace('\\', '/').replace('//', '/')
 
 def _RetrieveFileSystemObject() -> dict[str, str]:
 	with open("filesystem/files.py", 'r') as f:
